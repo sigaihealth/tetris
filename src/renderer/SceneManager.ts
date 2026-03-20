@@ -12,12 +12,9 @@ export class SceneManager {
   private readonly clock: THREE.Clock;
 
   constructor(canvas: HTMLCanvasElement) {
-    // Scene — lighter blue-gray background for a refreshing look
+    // Scene — bright blue-gray background
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x2a3048);
-
-    // Subtle fog for depth
-    this.scene.fog = new THREE.FogExp2(0x2a3048, 0.02);
+    this.scene.background = new THREE.Color(0x354060);
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(
@@ -33,67 +30,68 @@ export class SceneManager {
       antialias: true,
     });
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.4;
+    this.renderer.toneMappingExposure = 1.6;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Lighting — bright and clear
-    const ambient = new THREE.AmbientLight(0x8090c0, 1.0);
+    // Lighting — bright and well-lit
+    const ambient = new THREE.AmbientLight(0xa0b0e0, 1.2);
     this.scene.add(ambient);
 
     // Main key light from above
-    const directional = new THREE.DirectionalLight(0xffffff, 2.0);
+    const directional = new THREE.DirectionalLight(0xffffff, 2.5);
     directional.position.set(5, 15, 5);
     directional.castShadow = true;
     directional.shadow.mapSize.set(1024, 1024);
     this.scene.add(directional);
 
     // Fill light from opposite side
-    const fill = new THREE.DirectionalLight(0xa0b0ff, 0.6);
+    const fill = new THREE.DirectionalLight(0xb0c0ff, 0.8);
     fill.position.set(-5, 8, -5);
     this.scene.add(fill);
 
-    // Bright point light inside the well area — illuminates blocks from within
-    const wellLight = new THREE.PointLight(0x7090ff, 1.2, 40);
-    wellLight.position.set(0, 6, 0);
+    // Bottom-up light to illuminate the floor and lower blocks
+    const bottomLight = new THREE.DirectionalLight(0x8090cc, 0.6);
+    bottomLight.position.set(0, -3, 0);
+    bottomLight.target.position.set(0, 5, 0);
+    this.scene.add(bottomLight);
+    this.scene.add(bottomLight.target);
+
+    // Bright point light inside the well — illuminates blocks
+    const wellLight = new THREE.PointLight(0x80a0ff, 1.5, 40);
+    wellLight.position.set(2, 6, 2);
     this.scene.add(wellLight);
 
-    // Floor up-light — makes the bottom of the well glow
-    const floorLight = new THREE.PointLight(0x4466cc, 1.5, 15);
-    floorLight.position.set(0, -1, 0);
+    // Floor glow — strong up-light from below
+    const floorLight = new THREE.PointLight(0x6688dd, 2.0, 20);
+    floorLight.position.set(2, -0.5, 2);
     this.scene.add(floorLight);
 
-    // Environment map for glass reflections — brighter
+    // Second floor light for even coverage
+    const floorLight2 = new THREE.PointLight(0x5577cc, 1.5, 15);
+    floorLight2.position.set(0, 0, 0);
+    this.scene.add(floorLight2);
+
+    // Environment map — brighter for better glass reflections
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     const envScene = new THREE.Scene();
-    envScene.background = new THREE.Color(0x3a4060);
+    envScene.background = new THREE.Color(0x506080);
     const envTexture = pmremGenerator.fromScene(envScene).texture;
     this.scene.environment = envTexture;
     pmremGenerator.dispose();
 
     // Post-processing
     this.composer = new EffectComposer(this.renderer);
-
-    const renderPass = new RenderPass(this.scene, this.camera);
-    this.composer.addPass(renderPass);
-
-    const bloomPass = new UnrealBloomPass(
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.composer.addPass(new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.5,  // strength
-      0.4,  // radius
-      0.75, // threshold
-    );
-    this.composer.addPass(bloomPass);
+      0.45, 0.4, 0.8,
+    ));
+    this.composer.addPass(new FXAAPass());
 
-    const fxaaPass = new FXAAPass();
-    this.composer.addPass(fxaaPass);
-
-    // Clock
     this.clock = new THREE.Clock();
-
-    // Resize handler
     window.addEventListener('resize', this.onResize);
   }
 
@@ -106,13 +104,8 @@ export class SceneManager {
     this.composer.setSize(w, h);
   };
 
-  render(): void {
-    this.composer.render();
-  }
-
-  getDeltaTime(): number {
-    return this.clock.getDelta();
-  }
+  render(): void { this.composer.render(); }
+  getDeltaTime(): number { return this.clock.getDelta(); }
 
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
