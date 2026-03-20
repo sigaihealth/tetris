@@ -21,27 +21,27 @@ const PIECES = {
   L:{shape:[[0,0,1],[1,1,1]],color:"#f08820",key:"L"}, // Orange candy
 };
 
-// Bold juicy candy colors — rich, saturated, tasty
+// Translucent candy glass — see-through with strong color tint
 const JELLY_RGBA = {
-  "#18d8f0": "rgba(24, 216, 240, 0.78)",   // Cyan candy
-  "#f0d020": "rgba(240, 208, 32, 0.78)",   // Mango
-  "#c040f0": "rgba(192, 64, 240, 0.78)",   // Grape
-  "#30e868": "rgba(48, 232, 104, 0.78)",   // Lime
-  "#f03060": "rgba(240, 48, 96, 0.78)",    // Strawberry
-  "#3878f0": "rgba(56, 120, 240, 0.78)",   // Blueberry
-  "#f08820": "rgba(240, 136, 32, 0.78)",   // Orange
+  "#18d8f0": "rgba(24, 216, 240, 0.55)",   // Cyan candy
+  "#f0d020": "rgba(240, 208, 32, 0.55)",   // Mango
+  "#c040f0": "rgba(192, 64, 240, 0.55)",   // Grape
+  "#30e868": "rgba(48, 232, 104, 0.55)",   // Lime
+  "#f03060": "rgba(240, 48, 96, 0.55)",    // Strawberry
+  "#3878f0": "rgba(56, 120, 240, 0.55)",   // Blueberry
+  "#f08820": "rgba(240, 136, 32, 0.55)",   // Orange
   // Zen colors
-  "#7ecfcf": "rgba(126, 207, 207, 0.65)",
-  "#f0e68c": "rgba(240, 230, 140, 0.65)",
-  "#c9a0dc": "rgba(201, 160, 220, 0.65)",
-  "#90d5a0": "rgba(144, 213, 160, 0.65)",
-  "#f0a0a0": "rgba(240, 160, 160, 0.65)",
-  "#a0b8e0": "rgba(160, 184, 224, 0.65)",
-  "#f0c090": "rgba(240, 192, 144, 0.65)",
+  "#7ecfcf": "rgba(126, 207, 207, 0.45)",
+  "#f0e68c": "rgba(240, 230, 140, 0.45)",
+  "#c9a0dc": "rgba(201, 160, 220, 0.45)",
+  "#90d5a0": "rgba(144, 213, 160, 0.45)",
+  "#f0a0a0": "rgba(240, 160, 160, 0.45)",
+  "#a0b8e0": "rgba(160, 184, 224, 0.45)",
+  "#f0c090": "rgba(240, 192, 144, 0.45)",
   // Garbage colors
-  "#444455": "rgba(68, 68, 85, 0.60)",
-  "#3a3a4a": "rgba(58, 58, 74, 0.60)",
-  "#505060": "rgba(80, 80, 96, 0.60)",
+  "#444455": "rgba(68, 68, 85, 0.40)",
+  "#3a3a4a": "rgba(58, 58, 74, 0.40)",
+  "#505060": "rgba(80, 80, 96, 0.40)",
 };
 const getJellyColor = (hex) => {
   if (!hex) return "transparent";
@@ -441,7 +441,7 @@ function MiniGrid({shape, color, size=14, dimmed=false}) {
           `radial-gradient(ellipse at 25% 18%, rgba(255,255,255,0.65) 0%, transparent ${Math.max(gW,gH)*0.5}px)`,
           `linear-gradient(175deg, rgba(255,255,255,0.3) 0%, transparent 45%, rgba(0,0,0,0.12) 100%)`,
         ].join(','),
-        boxShadow:`inset 0 2px 3px rgba(255,255,255,0.45), inset 0 -1px 3px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.3), 0 0 10px ${color}20`,
+        boxShadow:`inset 0 3px 4px rgba(255,255,255,0.6), inset 0 -2px 4px rgba(0,0,0,0.2), inset 0 0 ${Math.max(gW,gH)*0.3}px ${color}30, 0 3px 8px rgba(0,0,0,0.35), 0 0 12px ${color}25`,
         borderRadius:3,
         WebkitMaskImage:cells.map(()=>`linear-gradient(#fff,#fff)`).join(','),
         WebkitMaskSize:cells.map(()=>`${size}px ${size}px`).join(','),
@@ -1158,15 +1158,17 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
   const boardEl = (
     <div style={{
-      position:"relative",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,
-      background:"rgba(255,255,255,0.03)",
-      boxShadow:"0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",padding:2,
+      position:"relative",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,
+      background:"linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
+      backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",
+      boxShadow:"0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.2), 0 0 60px rgba(80,120,200,0.04)",padding:2,
+      transform:"perspective(600px) rotateX(1deg)",transformStyle:"preserve-3d",
       animation: shake ? "boardShake 0.3s ease-out" : isZen ? "zenBoardGlow 4s ease-in-out infinite" : "none",
     }}>
-      {/* Grid lines */}
+      {/* Grid lines — subtle glass etching */}
       <div style={{position:"absolute",top:2,left:2,width:COLS*CELL,height:ROWS*CELL,
-        backgroundImage:`linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)`,
-        backgroundSize:`${CELL}px ${CELL}px`,borderRadius:8,pointerEvents:"none",zIndex:0}} />
+        backgroundImage:`linear-gradient(rgba(100,150,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(100,150,255,0.06) 1px, transparent 1px)`,
+        backgroundSize:`${CELL}px ${CELL}px`,borderRadius:10,pointerEvents:"none",zIndex:0}} />
 
       {/* Blocks — ONE div per connected group using clip-path */}
       <div style={{position:"relative",width:COLS*CELL,height:ROWS*CELL,zIndex:1}}>
@@ -1304,19 +1306,31 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
                 maskSize:g.cells.map(()=>`${CELL}px ${CELL}px`).join(','),
                 maskPosition:g.cells.map(([r,c])=>`${(c-g.minC)*CELL}px ${(r-g.minR)*CELL}px`).join(','),
                 maskRepeat:g.cells.map(()=>'no-repeat').join(','),
-                // Liquid glass appearance — ONE gradient across the whole piece
+                // 3D liquid glass — bright specular, deep depth, inner glow
                 backgroundImage:[
-                  `radial-gradient(ellipse at 25% 15%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.15) ${Math.max(gW,gH)*0.3}px, transparent ${Math.max(gW,gH)*0.55}px)`,
-                  `linear-gradient(175deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 25%, transparent 50%, rgba(0,0,0,0.08) 75%, rgba(0,0,0,0.18) 100%)`,
+                  // Sharp specular highlight — bright white spot like light on glass
+                  `radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) ${Math.max(gW,gH)*0.2}px, transparent ${Math.max(gW,gH)*0.45}px)`,
+                  // Secondary softer highlight for volume
+                  `radial-gradient(ellipse at 65% 80%, rgba(255,255,255,0.15) 0%, transparent ${Math.max(gW,gH)*0.4}px)`,
+                  // Depth gradient — light top to dark bottom
+                  `linear-gradient(175deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 20%, transparent 45%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.22) 100%)`,
                 ].join(','),
                 boxShadow:[
-                  `inset 0 3px 6px rgba(255,255,255,0.5)`,
-                  `inset 0 -2px 5px rgba(0,0,0,0.2)`,
-                  `inset 3px 0 5px rgba(255,255,255,0.2)`,
-                  `inset -2px 0 4px rgba(0,0,0,0.12)`,
-                  `inset 0 0 ${Math.max(gW,gH)*0.3}px ${g.color}30`,
-                  `0 4px 14px rgba(0,0,0,0.35)`,
-                  `0 0 22px ${g.color}25`,
+                  // Top bevel — bright white edge like light catching the rim
+                  `inset 0 4px 8px rgba(255,255,255,0.65)`,
+                  // Bottom shadow — deep underside
+                  `inset 0 -3px 8px rgba(0,0,0,0.25)`,
+                  // Left bevel
+                  `inset 4px 0 6px rgba(255,255,255,0.25)`,
+                  // Right shadow
+                  `inset -3px 0 6px rgba(0,0,0,0.15)`,
+                  // Inner color glow — glowing from within
+                  `inset 0 0 ${Math.max(gW,gH)*0.4}px ${g.color}35`,
+                  // 3D lift shadow — piece floats above the board
+                  `0 6px 20px rgba(0,0,0,0.4)`,
+                  `0 2px 6px rgba(0,0,0,0.25)`,
+                  // Color glow halo
+                  `0 0 28px ${g.color}30`,
                 ].join(','),
                 borderRadius:6,
                 animation: hasLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+(gi%5)*0.25}s ease-in-out infinite`,
@@ -1382,7 +1396,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
       justifyContent:isMobile?"flex-start":"center",
-      background:"linear-gradient(160deg, #141820 0%, #1a1e2a 40%, #161a24 70%, #121620 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
+      background:"linear-gradient(160deg, #0e1420 0%, #141c2c 30%, #101828 60%, #0c1220 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
       color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:isMobile?"6px 4px":"12px 8px",
       touchAction:"none",WebkitTouchCallout:"none"}}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
