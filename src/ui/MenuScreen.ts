@@ -1,10 +1,11 @@
 export type WellSize = 'small' | 'medium' | 'large';
 
-export type GameMode = '3d' | '2d';
+export type GameMode = '3d' | '2d' | 'physics';
 
 export interface MenuCallbacks {
   onStart: (size: WellSize) => void;
   onStart2D: () => void;
+  onStartPhysics: () => void;
   onMultiplayer: () => void;
   onResume: () => void;
   onRestart: () => void;
@@ -135,6 +136,7 @@ export class MenuScreen {
     const modes: { mode: GameMode; label: string }[] = [
       { mode: '2d', label: '2D CLASSIC' },
       { mode: '3d', label: '3D' },
+      { mode: 'physics', label: 'PHYSICS' },
     ];
 
     // Well size selector (built ahead so we can show/hide)
@@ -183,7 +185,26 @@ export class MenuScreen {
 
     const updateSizeVisibility = (): void => {
       sizeSection.style.display = this.selectedMode === '3d' ? '' : 'none';
-      buildControlsGrid();
+      if (this.selectedMode !== 'physics') {
+        buildControlsGrid();
+      } else {
+        ctrlSection.replaceChildren();
+        const deviceLabel = isMobile ? 'TOUCH' : 'KEYBOARD';
+        ctrlSection.appendChild(el('div', 'menu-label', `CONTROLS \u2014 PHYSICS ${deviceLabel}`));
+        const grid = el('div', 'controls-grid');
+        const physicsControls: [string, string][] = [
+          ['Arrows / WASD', 'Push piece'],
+          ['Up / W', 'Rotate (torque)'],
+          ['Space', 'Slam down'],
+          ['Down', 'Soft drop'],
+          ['Esc', 'Back to menu'],
+        ];
+        for (const [key, action] of physicsControls) {
+          grid.appendChild(el('span', undefined, key));
+          grid.appendChild(el('span', undefined, action));
+        }
+        ctrlSection.appendChild(grid);
+      }
     };
 
     for (const m of modes) {
@@ -232,6 +253,8 @@ export class MenuScreen {
     const startAction = (): void => {
       if (this.selectedMode === '2d') {
         this.callbacks.onStart2D();
+      } else if (this.selectedMode === 'physics') {
+        this.callbacks.onStartPhysics();
       } else {
         this.callbacks.onStart(this.selectedSize);
       }

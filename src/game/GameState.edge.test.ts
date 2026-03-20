@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameState, WELL_PRESETS } from './GameState.js';
-import type { GameConfig, GameEvent } from './GameState.js';
+import type { GameConfig } from './GameState.js';
 
 /**
  * Helper: fill an entire plane at the given y-level in the well.
@@ -212,7 +212,7 @@ describe('GameState — edge cases', () => {
   describe('event flushing', () => {
     it('flushEvents returns events and clears them', () => {
       game.start();
-      const events1 = game.flushEvents();
+      game.flushEvents();
       // start() spawns a piece, no events from spawn itself unless game over
       // But start calls spawnPiece which may push game_over. On empty well, no event.
       // Actually, let's generate some events:

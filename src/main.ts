@@ -4,6 +4,7 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import Tetris2D from './tetris2d/Tetris2D.js';
+import PhysicsTetris from './physics-tetris/PhysicsTetris.js';
 import MultiplayerLobby from './multiplayer/MultiplayerLobby.js';
 import MultiplayerGame from './multiplayer/MultiplayerGame.js';
 import { ErrorBoundary } from './multiplayer/ErrorBoundary.js';
@@ -25,7 +26,7 @@ import { MenuScreen } from './ui/MenuScreen.js';
 import type { WellSize } from './ui/MenuScreen.js';
 import { Leaderboard } from './ui/Leaderboard.js';
 
-type AppState = 'menu' | 'playing' | 'paused' | 'gameover' | 'playing2d' | 'multiplayer';
+type AppState = 'menu' | 'playing' | 'paused' | 'gameover' | 'playing2d' | 'physics' | 'multiplayer';
 
 class App {
   private state: AppState = 'menu';
@@ -52,6 +53,10 @@ class App {
   private tetris2dRoot: HTMLElement;
   private reactRoot: Root | null = null;
 
+  // Physics mode
+  private physicsRoot: HTMLElement;
+  private physicsReactRoot: Root | null = null;
+
   // Multiplayer
   private multiplayerRoot: HTMLElement;
   private multiplayerReactRoot: Root | null = null;
@@ -69,6 +74,12 @@ class App {
     this.tetris2dRoot.id = 'tetris-2d-root';
     this.tetris2dRoot.style.display = 'none';
     document.body.appendChild(this.tetris2dRoot);
+
+    // Create physics container
+    this.physicsRoot = document.createElement('div');
+    this.physicsRoot.id = 'physics-root';
+    this.physicsRoot.style.display = 'none';
+    document.body.appendChild(this.physicsRoot);
 
     // Create multiplayer container
     this.multiplayerRoot = document.createElement('div');
@@ -92,6 +103,7 @@ class App {
     this.menu = new MenuScreen({
       onStart: (size: WellSize) => this.startGame(size),
       onStart2D: () => this.start2D(),
+      onStartPhysics: () => this.startPhysics(),
       onMultiplayer: () => this.startMultiplayer(),
       onResume: () => this.unpause(),
       onRestart: () => this.startGame(this.currentSize),
@@ -132,6 +144,11 @@ class App {
     // Listen for 2D mode exit event
     window.addEventListener('tetris2d-exit', () => {
       if (this.state === 'playing2d') this.quit2D();
+    });
+
+    // Listen for physics mode exit event
+    window.addEventListener('physics-tetris-exit', () => {
+      if (this.state === 'physics') this.quitPhysics();
     });
 
     // Start render loop
@@ -201,6 +218,35 @@ class App {
 
     // Hide 2D, show 3D canvas
     this.tetris2dRoot.style.display = 'none';
+    this.canvas.style.display = '';
+
+    this.state = 'menu';
+    this.menu.showStartScreen();
+  }
+
+  private startPhysics(): void {
+    this.state = 'physics';
+    this.menu.hide();
+    this.hud.hide();
+
+    // Hide the Three.js canvas
+    this.canvas.style.display = 'none';
+
+    // Show the physics container and mount React
+    this.physicsRoot.style.display = '';
+    this.physicsReactRoot = createRoot(this.physicsRoot);
+    this.physicsReactRoot.render(createElement(ErrorBoundary, null, createElement(PhysicsTetris)));
+  }
+
+  private quitPhysics(): void {
+    // Unmount React
+    if (this.physicsReactRoot) {
+      this.physicsReactRoot.unmount();
+      this.physicsReactRoot = null;
+    }
+
+    // Hide physics, show 3D canvas
+    this.physicsRoot.style.display = 'none';
     this.canvas.style.display = '';
 
     this.state = 'menu';
@@ -281,6 +327,11 @@ class App {
       if (e.key === 'Escape') {
         this.quit2D();
       }
+      return;
+    }
+
+    // In physics mode, Escape is handled by the React component via custom event
+    if (this.state === 'physics') {
       return;
     }
 
