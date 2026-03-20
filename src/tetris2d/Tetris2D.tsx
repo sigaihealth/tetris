@@ -20,6 +20,34 @@ const PIECES = {
   J:{shape:[[1,0,0],[1,1,1]],color:"#2979ff",key:"J"},
   L:{shape:[[0,0,1],[1,1,1]],color:"#ff9100",key:"L"},
 };
+
+// Map hex colors to translucent RGBA for jelly rendering
+const JELLY_RGBA = {
+  "#00e5ff": "rgba(0, 229, 255, 0.72)",
+  "#ffea00": "rgba(255, 234, 0, 0.72)",
+  "#d500f9": "rgba(213, 0, 249, 0.72)",
+  "#00e676": "rgba(0, 230, 118, 0.72)",
+  "#ff1744": "rgba(255, 23, 68, 0.72)",
+  "#2979ff": "rgba(41, 121, 255, 0.72)",
+  "#ff9100": "rgba(255, 145, 0, 0.72)",
+  // Zen colors
+  "#7ecfcf": "rgba(126, 207, 207, 0.72)",
+  "#f0e68c": "rgba(240, 230, 140, 0.72)",
+  "#c9a0dc": "rgba(201, 160, 220, 0.72)",
+  "#90d5a0": "rgba(144, 213, 160, 0.72)",
+  "#f0a0a0": "rgba(240, 160, 160, 0.72)",
+  "#a0b8e0": "rgba(160, 184, 224, 0.72)",
+  "#f0c090": "rgba(240, 192, 144, 0.72)",
+  // Garbage colors
+  "#444455": "rgba(68, 68, 85, 0.72)",
+  "#3a3a4a": "rgba(58, 58, 74, 0.72)",
+  "#505060": "rgba(80, 80, 96, 0.72)",
+};
+const getJellyColor = (hex) => {
+  if (!hex) return "transparent";
+  const base = hex.length > 7 ? hex.slice(0, 7) : hex;
+  return JELLY_RGBA[base] || `${base}bb`;
+};
 const PIECE_KEYS = Object.keys(PIECES);
 
 const ZEN_COLORS = {
@@ -640,6 +668,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   const dasDir = useRef(null);
   const dasTimer = useRef(null);
   const dasRepeat = useRef(null);
+  const lockedCellsRef = useRef(new Set());
+  const [lockedCells, setLockedCells] = useState(new Set());
 
   // Keep refs in sync
   boardRef.current = board;
@@ -792,6 +822,16 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     const c = currentRef.current, p = posRef.current;
     if (!c) return;
     clearLockTimer();
+
+    // Track locked cells for jelly landing animation
+    const newLocked = new Set();
+    for (let r = 0; r < c.shape.length; r++)
+      for (let cc = 0; cc < c.shape[0].length; cc++)
+        if (c.shape[r][cc]) newLocked.add(`${p.r+r},${p.c+cc}`);
+    lockedCellsRef.current = newLocked;
+    setLockedCells(new Set(newLocked));
+    setTimeout(() => { lockedCellsRef.current = new Set(); setLockedCells(new Set()); }, 600);
+
     const b = mergeBoard(boardRef.current, c.shape, c.color, p.r, p.c);
     const {board:nb, cleared} = clearLines(b);
 
@@ -1107,91 +1147,68 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   );
 
   // -- Board content --
+  // Separate ghost cells from filled cells for rendering in different layers
+  const ghostDisplay = Array.from({length:ROWS}, ()=>Array(COLS).fill(null));
+  const filledDisplay = Array.from({length:ROWS}, ()=>Array(COLS).fill(null));
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const v = display[r][c];
+    if (!v) continue;
+    if (v.length > 7) ghostDisplay[r][c] = v; // ghost pieces have appended alpha like "#00e5ff33"
+    else filledDisplay[r][c] = v;
+  }
+
   const boardEl = (
     <div style={{
-      position:"relative",border:`2px solid ${isZen ? "#4a5580" : "#3a4060"}`,borderRadius:8,
-      background: isZen ? "linear-gradient(180deg, #1a2035, #1e2540)" : "linear-gradient(180deg, #10121e, #0c0e18)",
-      boxShadow:"0 0 40px rgba(0,200,255,0.06),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)",padding:2,
+      position:"relative",border:"1.5px solid rgba(255,255,255,0.3)",borderRadius:10,
+      background:"rgba(255,255,255,0.08)",
+      boxShadow:"0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)",padding:2,
+      transform:"perspective(800px) rotateX(2deg)",transformStyle:"preserve-3d",
       animation: shake ? "boardShake 0.3s ease-out" : isZen ? "zenBoardGlow 4s ease-in-out infinite" : "none",
     }}>
-      <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:0,
-        backgroundImage:`linear-gradient(rgba(80,100,160,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,0.1) 1px, transparent 1px)`,
-        backgroundSize:`${CELL}px ${CELL}px`}}>
-        {(() => {
-          // Compute connected components via flood fill — each group rendered as ONE jelly piece
-          const gid = Array.from({length:ROWS}, ()=>Array(COLS).fill(-1));
-          const ginfo = [];
-          const flood = (r,c,color,id) => {
-            if(r<0||r>=ROWS||c<0||c>=COLS||gid[r][c]>=0) return;
-            const v=display[r]?.[c]; if(!v) return;
-            const bc=v.length>7?v.slice(0,7):v;
-            if(bc!==color) return;
-            gid[r][c]=id;
-            const g=ginfo[id];
-            if(r<g.minR)g.minR=r; if(r>g.maxR)g.maxR=r;
-            if(c<g.minC)g.minC=c; if(c>g.maxC)g.maxC=c;
-            flood(r-1,c,color,id);flood(r+1,c,color,id);flood(r,c-1,color,id);flood(r,c+1,color,id);
-          };
-          for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
-            if(gid[r][c]<0 && display[r][c]) {
-              const v=display[r][c], bc=v.length>7?v.slice(0,7):v;
-              ginfo.push({color:bc,minR:r,maxR:r,minC:c,maxC:c,ghost:v.length>7});
-              flood(r,c,bc,ginfo.length-1);
-            }
-          }
+      {/* SVG Gooey Filter */}
+      <svg style={{position:'absolute',width:0,height:0}}>
+        <defs>
+          <filter id="gooey">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+            <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" result="goo" />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+          </filter>
+        </defs>
+      </svg>
 
-          return display.flat().map((cell,i) => {
-            const r=Math.floor(i/COLS), c=i%COLS;
-            const isFlash=flashRows.includes(r);
-            if(!cell||isFlash) return <div key={i} style={{width:CELL,height:CELL,background:isFlash?"#fff":"transparent",animation:isFlash?"flashRow 0.2s ease-out":"none"}} />;
+      {/* Filtered grid layer — filled cells with gooey filter */}
+      <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,
+        filter:"url(#gooey)",willChange:"filter",
+        backgroundImage:`linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)`,
+        backgroundSize:`${CELL+1}px ${CELL+1}px`}}>
+        {filledDisplay.flat().map((cell,i) => {
+          const r=Math.floor(i/COLS), c=i%COLS;
+          const isFlash=flashRows.includes(r);
+          if(!cell||isFlash) return <div key={i} style={{width:CELL,height:CELL,background:isFlash?"#fff":"transparent",animation:isFlash?"flashRow 0.2s ease-out":"none"}} />;
 
-            const id=gid[r][c];
-            const g=ginfo[id];
-            const bc=g.color;
-            const isGhost=g.ghost;
+          const jellyBg = getJellyColor(cell);
+          const isLanding = lockedCells.has(`${r},${c}`);
 
-            // Neighbor checks for edge detection
-            const sameAt=(rr,cc)=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&gid[rr][cc]===id;
-            const up=sameAt(r-1,c),dn=sameAt(r+1,c),lt=sameAt(r,c-1),rt=sameAt(r,c+1);
+          return (
+            <div key={i} className="jelly-block" style={{
+              width:CELL, height:CELL,
+              borderRadius:4,
+              background:jellyBg,
+              boxShadow:`inset 0 4px 8px rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.2)`,
+              animation: isLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+(i%5)*0.25}s ease-in-out infinite`,
+              animationDelay: isLanding ? "0s" : `${(i*0.11)%2.5}s`,
+            }} />
+          );
+        })}
+      </div>
 
-            // Sharp corners with just a hint of rounding on outer corners (like firm jelly)
-            const R=3;
-            const tl=(!up&&!lt)?R:0, tr=(!up&&!rt)?R:0, bl=(!dn&&!lt)?R:0, br=(!dn&&!rt)?R:0;
-
-            if(isGhost) return <div key={i} style={{width:CELL,height:CELL,borderRadius:`${tl}px ${tr}px ${br}px ${bl}px`,background:`${bc}18`,border:!up||!dn||!lt||!rt?`1px solid ${bc}25`:'none'}} />;
-
-            // Unified gradient — spans the whole connected group so there's no per-cell seam
-            const gW=(g.maxC-g.minC+1)*CELL, gH=(g.maxR-g.minR+1)*CELL;
-            const offX=(c-g.minC)*CELL, offY=(r-g.minR)*CELL;
-
-            return (
-              <div key={i} className="jelly-block" style={{
-                width:CELL, height:CELL,
-                borderRadius:`${tl}px ${tr}px ${br}px ${bl}px`,
-                // Body: flat translucent color (unified across group)
-                backgroundColor:`${bc}cc`,
-                // Specular highlight + depth gradient spanning the WHOLE piece
-                backgroundImage:[
-                  `radial-gradient(ellipse at ${((0.3*gW-offX)/CELL)*100/(1)}% ${((0.2*gH-offY)/CELL)*100/(1)}%, rgba(255,255,255,0.55) 0%, transparent ${Math.max(gW,gH)*0.7}px)`,
-                  `linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 40%, rgba(0,0,0,0.08) 100%)`,
-                ].join(','),
-                backgroundSize:`${gW}px ${gH}px, ${gW}px ${gH}px`,
-                backgroundPosition:`${-offX}px ${-offY}px, ${-offX}px ${-offY}px`,
-                boxShadow:[
-                  !up?`inset 0 1.5px 0 rgba(255,255,255,0.4)`:'',
-                  !dn?`inset 0 -1.5px 0 rgba(0,0,0,0.15)`:'',
-                  !lt?`inset 1.5px 0 0 rgba(255,255,255,0.2)`:'',
-                  !rt?`inset -1.5px 0 0 rgba(0,0,0,0.08)`:'',
-                  !dn?`0 2px 6px rgba(0,0,0,0.25)`:'',
-                  `0 0 ${CELL*0.25}px ${bc}22`,
-                ].filter(Boolean).join(','),
-                transition:"transform 0.1s cubic-bezier(0.34,1.56,0.64,1)",
-                animation:`jelloBreath ${2.8+(i%5)*0.25}s ease-in-out infinite`,
-                animationDelay:`${(i*0.11)%2.5}s`,
-              }} />
-            );
-          });
-        })()}
+      {/* Ghost piece layer — rendered on top, NO gooey filter */}
+      <div style={{position:"absolute",top:2,left:2,display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,pointerEvents:"none"}}>
+        {ghostDisplay.flat().map((cell,i) => {
+          if(!cell) return <div key={i} style={{width:CELL,height:CELL}} />;
+          const bc = cell.slice(0,7);
+          return <div key={i} style={{width:CELL,height:CELL,borderRadius:4,background:`${bc}18`,border:`1px solid ${bc}30`}} />;
+        })}
       </div>
 
       {/* Action labels */}
@@ -1239,7 +1256,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
       justifyContent:isMobile?"flex-start":"center",
-      background:"linear-gradient(160deg,#0a0a12,#0d0d1a 50%,#0a0a12)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
+      background:"linear-gradient(180deg, #87CEEB 0%, #B0D4E8 40%, #C8D8E4 70%, #D0CCC8 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
       color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:isMobile?"6px 4px":"12px 8px",
       touchAction:"none",WebkitTouchCallout:"none"}}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -1252,13 +1269,14 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes labelFloat{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}60%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(1.15)}}
         @keyframes boardShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
         @keyframes jelloLand{0%{transform:scaleY(0.55) scaleX(1.3)}12%{transform:scaleY(1.2) scaleX(0.82)}24%{transform:scaleY(0.88) scaleX(1.1)}36%{transform:scaleY(1.08) scaleX(0.94)}50%{transform:scaleY(0.96) scaleX(1.03)}65%{transform:scaleY(1.02) scaleX(0.99)}100%{transform:scaleY(1) scaleX(1)}}
+        @keyframes jellyLand{0%{transform:scaleY(0.5) scaleX(1.3)}15%{transform:scaleY(1.25) scaleX(0.8)}30%{transform:scaleY(0.85) scaleX(1.12)}45%{transform:scaleY(1.1) scaleX(0.92)}60%{transform:scaleY(0.95) scaleX(1.04)}75%{transform:scaleY(1.03) scaleX(0.98)}100%{transform:scaleY(1) scaleX(1)}}
         @keyframes jelloBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.008,0.992)}}
         .jelly-block{position:relative}
         .jelly-block:hover{transform:scale(1.04)!important;filter:brightness(1.08);z-index:2}
         .jelly-block:active{transform:scaleY(0.82) scaleX(1.14)!important;filter:brightness(1.1);z-index:2;transition:transform 0.05s!important}
         @keyframes zenFloat{0%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-40px) scale(1.3);opacity:0.6}100%{transform:translateY(0) scale(1);opacity:0.3}}
         @keyframes zenBoardGlow{0%,100%{box-shadow:0 0 20px rgba(100,150,200,0.15),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 40px rgba(100,150,200,0.3),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}}
-        .menu-btn:hover{color:#888!important;border-color:#333!important}
+        .menu-btn:hover{color:rgba(40,60,90,0.9)!important;border-color:rgba(255,255,255,0.6)!important}
         .touch-btn{-webkit-tap-highlight-color:transparent}
         .touch-btn:active{opacity:0.7;transform:scale(0.93)}
       `}</style>
@@ -1286,8 +1304,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       <div style={{display:"flex",alignItems:"center",gap:isMobile?6:12,marginBottom:isMobile?4:8,
         width:totalWidth,maxWidth:"98vw",justifyContent:"space-between",flexWrap:"wrap"}}>
         <button className="menu-btn" onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:2,
-          padding:"4px 10px",border:"1px solid #1a1a2e",borderRadius:4,background:"transparent",color:"#333",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
-        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?8:10,color:isZen?"#6a7090":"#444",letterSpacing:isMobile?1:2,textAlign:"center",flex:isMobile?1:undefined,minWidth:0}}>
+          padding:"4px 10px",border:"1px solid rgba(255,255,255,0.4)",borderRadius:4,background:"rgba(255,255,255,0.2)",color:"rgba(60,80,110,0.8)",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
+        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?8:10,color:isZen?"rgba(80,100,140,0.7)":"rgba(60,80,110,0.7)",letterSpacing:isMobile?1:2,textAlign:"center",flex:isMobile?1:undefined,minWidth:0}}>
           {challenge.icon} {challenge.name}{" "}
           {!isZen && <span style={{color:DIFF_COLORS[difficulty],fontSize:isMobile?7:9}}>{difficulty.toUpperCase()}</span>}
         </div>
@@ -1298,16 +1316,16 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
             textShadow:`0 0 12px ${timerColor}55`,animation:timerUrgent?"urgentPulse 0.5s ease-in-out infinite":"none",
             minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
         ) : (
-          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?11:14,fontWeight:700,color:"#282828",minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?11:14,fontWeight:700,color:"rgba(60,80,110,0.6)",minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
         )}
       </div>
 
       {/* Progress */}
       {challenge.goal !== "none" && (
-        <div style={{width:totalWidth,maxWidth:"98vw",height:3,background:"#0e0e18",borderRadius:2,marginBottom:isMobile?4:8}}>
+        <div style={{width:totalWidth,maxWidth:"98vw",height:3,background:"rgba(255,255,255,0.3)",borderRadius:2,marginBottom:isMobile?4:8}}>
           <div style={{height:"100%",borderRadius:2,transition:"width 0.35s ease-out",width:`${progress*100}%`,
-            background:progress>0.85?"linear-gradient(90deg,#00f0f0,#00f040)":"#00f0f0",
-            boxShadow:`0 0 8px ${progress>0.85?"#00f040":"#00f0f0"}44`}} />
+            background:progress>0.85?"linear-gradient(90deg,#00a0c0,#00b040)":"#00a0c0",
+            boxShadow:`0 0 8px ${progress>0.85?"#00b040":"#00a0c0"}44`}} />
         </div>
       )}
 
@@ -1393,8 +1411,8 @@ function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
       style={{
         fontFamily:"'Orbitron'",fontSize:label.length>2?11:18,fontWeight:700,
         flex:flex||"1 1 0",height:52,minWidth:48,
-        border:"1px solid #2a2a3e",borderRadius:8,
-        background:"rgba(15,15,30,0.85)",color:"#8888aa",
+        border:"1px solid rgba(255,255,255,0.4)",borderRadius:8,
+        background:"rgba(255,255,255,0.3)",color:"rgba(60,80,110,0.7)",
         display:"flex",alignItems:"center",justifyContent:"center",
         cursor:"pointer",letterSpacing:label.length>2?1:0,
         WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
@@ -1419,8 +1437,8 @@ function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
 
 function SidePanel({title, children, highlight}) {
   return (
-    <div style={{background:"#0a0a16",border:`1px solid ${highlight?"#00f0f044":"#1a1a2e"}`,borderRadius:6,padding:"8px 10px",transition:"border-color 0.3s"}}>
-      <div style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:3,color:"#333",marginBottom:5,textAlign:"center"}}>{title}</div>
+    <div style={{background:"rgba(255,255,255,0.25)",border:`1px solid ${highlight?"rgba(0,200,240,0.3)":"rgba(255,255,255,0.4)"}`,borderRadius:8,padding:"8px 10px",transition:"border-color 0.3s",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)"}}>
+      <div style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:3,color:"rgba(80,100,130,0.8)",marginBottom:5,textAlign:"center"}}>{title}</div>
       {children}
     </div>
   );
@@ -1430,9 +1448,10 @@ function CtrlBtn({label, onClick, wide}) {
   return (
     <button onClick={onClick} style={{
       fontFamily:"'Orbitron'",fontSize:wide?9:13,fontWeight:700,
-      width:wide?78:34,height:30,border:"1px solid #1a1a2e",borderRadius:5,
-      background:"#0a0a16",color:"#444",cursor:"pointer",
+      width:wide?78:34,height:30,border:"1px solid rgba(255,255,255,0.4)",borderRadius:5,
+      background:"rgba(255,255,255,0.25)",color:"rgba(80,100,130,0.8)",cursor:"pointer",
       display:"flex",alignItems:"center",justifyContent:"center",letterSpacing:wide?1:0,
+      backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",
     }}>{label}</button>
   );
 }
