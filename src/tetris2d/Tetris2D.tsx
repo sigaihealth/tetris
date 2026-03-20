@@ -663,6 +663,11 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     setTimeout(() => setActionLabels(prev => prev.filter(l => l.id !== id)), 1200);
   }, [CELL]);
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => { audio.stopMusic(); };
+  }, [audio]);
+
   // Countdown
   useEffect(() => {
     if (countdown <= 0) return;
@@ -821,7 +826,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       setCombo(0);
       setLastWasTetris(false);
       setBoard(nb);
-      audio.playSoftDrop();
+      if (challenge.id !== "zen") audio.playSoftDrop();
       spawnNext();
     }
   }, [spawnNext, config.startLevel, challenge.goal, addLabel, clearLockTimer, audio]);
@@ -869,9 +874,9 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     while (!collides(boardRef.current, c.shape, nr+1, p.c)) nr++;
     setScore(s => s + (nr - p.r) * 2);
     setPos({r:nr, c:p.c});
-    audio.playHardDrop();
+    if (challenge.id !== "zen") audio.playHardDrop(); else audio.playMove();
     setTimeout(() => doLock(), 0);
-  }, [doLock, clearLockTimer, audio]);
+  }, [doLock, clearLockTimer, audio, challenge.id]);
 
   const move = useCallback((dc) => {
     if (!currentRef.current || pausedRef.current) return;
@@ -1123,7 +1128,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000000bb",borderRadius:6,zIndex:10}}>
           <div style={{fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,color:"#f0f000",
             animation:"pulse 1.5s ease-in-out infinite",textShadow:"0 0 20px #f0f00066"}}>PAUSED</div>
-          <div style={{fontFamily:"'Orbitron'",fontSize:10,color:"#888",marginTop:12,letterSpacing:1}}>Press P or ESC to resume</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:10,color:"#888",marginTop:12,letterSpacing:1}}>P / ESC to resume</div>
           <button onClick={() => window.dispatchEvent(new CustomEvent('tetris2d-exit'))} style={{
             fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,letterSpacing:2,marginTop:20,
             padding:"8px 20px",border:"1px solid #f0f00066",borderRadius:6,
@@ -1179,7 +1184,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       {/* Zen floating particles */}
       {isZen && (
         <div style={{position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden'}}>
-          {Array.from({length: 20}, (_, i) => (
+          {Array.from({length: isMobile ? 10 : 20}, (_, i) => (
             <div key={i} style={{
               position:'absolute',
               width: 4 + (((i * 7 + 3) % 9)),
