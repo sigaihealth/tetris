@@ -22,6 +22,11 @@ const PIECES = {
 };
 const PIECE_KEYS = Object.keys(PIECES);
 
+const ZEN_COLORS = {
+  I: "#7ecfcf", O: "#f0e68c", T: "#c9a0dc", S: "#90d5a0",
+  Z: "#f0a0a0", J: "#a0b8e0", L: "#f0c090",
+};
+
 const CHALLENGES = [
   {id:"sprint20",name:"SPRINT 20",desc:"Clear 20 lines as fast as you can",goal:"lines",target:20,icon:"⚡",
     difficulties:{easy:{timeLimit:180,startLevel:0,garbageRows:0},medium:{timeLimit:120,startLevel:2,garbageRows:0},
@@ -38,6 +43,9 @@ const CHALLENGES = [
   {id:"freeplay",name:"FREE PLAY",desc:"Classic endless mode, no time limit",goal:"none",icon:"♾️",
     difficulties:{easy:{timeLimit:0,startLevel:0,garbageRows:0},medium:{timeLimit:0,startLevel:3,garbageRows:0},
       hard:{timeLimit:0,startLevel:6,garbageRows:4},expert:{timeLimit:0,startLevel:9,garbageRows:8}}},
+  {id:"zen",name:"ZEN",desc:"No gravity. Place blocks at your own pace. Pure relaxation.",goal:"none",icon:"🧘",
+    difficulties:{easy:{timeLimit:0,startLevel:0,garbageRows:0},medium:{timeLimit:0,startLevel:0,garbageRows:0},
+      hard:{timeLimit:0,startLevel:0,garbageRows:0},expert:{timeLimit:0,startLevel:0,garbageRows:0}}},
 ];
 
 const DIFF_COLORS = {easy:"#00f000",medium:"#f0f000",hard:"#f08000",expert:"#f00000"};
@@ -310,19 +318,82 @@ function useAudio() {
     musicNodesRef.current = { pad1, pad2, lfo, master, arpeggioTimer };
   }, [getCtx]);
 
+  const startZenMusic = useCallback(() => {
+    if (musicOnRef.current) return;
+    musicOnRef.current = true;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const master = ctx.createGain(); master.gain.value = 0.08; master.connect(ctx.destination);
+
+    // Very slow, warm pad with lots of reverb feel
+    const pad1 = ctx.createOscillator(); pad1.type = 'sine'; pad1.frequency.value = 55; // A1
+    const pad2 = ctx.createOscillator(); pad2.type = 'sine'; pad2.frequency.value = 82.41; // E2
+    const pad3 = ctx.createOscillator(); pad3.type = 'sine'; pad3.frequency.value = 110; // A2
+    const padGain = ctx.createGain(); padGain.gain.value = 1.0;
+    const padFilter = ctx.createBiquadFilter(); padFilter.type = 'lowpass'; padFilter.frequency.value = 180;
+
+    // Very slow LFO for dreamy movement
+    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 3;
+    lfo.connect(lfoGain); lfoGain.connect(pad1.frequency);
+
+    pad1.connect(padFilter); pad2.connect(padFilter); pad3.connect(padFilter);
+    padFilter.connect(padGain); padGain.connect(master);
+    pad1.start(t); pad2.start(t); pad3.start(t); lfo.start(t);
+
+    // Slow pentatonic chimes with long decay
+    const zenScale = [220, 261.63, 329.63, 392, 523.25, 659.25];
+    let arpeggioTimer = null;
+    const scheduleZenChime = () => {
+      if (!musicOnRef.current) return;
+      const ct = ctx.currentTime;
+      // 1-2 notes per phrase, very sparse
+      const numNotes = 1 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < numNotes; i++) {
+        const freq = zenScale[Math.floor(Math.random() * zenScale.length)];
+        const d = i * 0.8;
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.3, ct + d);
+        g.gain.exponentialRampToValueAtTime(0.001, ct + d + 1.5); // long decay
+        o.connect(g); g.connect(master);
+        o.start(ct + d); o.stop(ct + d + 1.5);
+      }
+      // Long pauses between chimes (2-5 seconds)
+      arpeggioTimer = setTimeout(scheduleZenChime, (2000 + Math.random() * 3000));
+    };
+    scheduleZenChime();
+
+    musicNodesRef.current = { pad1, pad2, pad3, lfo, master, arpeggioTimer };
+  }, [getCtx]);
+
+  // Softer zen line clear chime
+  const playClearZen = useCallback((count) => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const notes = [392, 523.25, 659.25, 784, 1047];
+    const num = Math.min(count + 2, notes.length);
+    for (let i = 0; i < num; i++) {
+      const delay = i * 0.12;
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = notes[i];
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.1, t + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.6);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t + delay); o.stop(t + delay + 0.6);
+    }
+  }, [getCtx]);
+
   const stopMusic = useCallback(() => {
     musicOnRef.current = false;
     if (musicNodesRef.current) {
-      const { pad1, pad2, lfo, arpeggioTimer } = musicNodesRef.current;
+      const { pad1, pad2, pad3, lfo, arpeggioTimer } = musicNodesRef.current;
       try { pad1.stop(); } catch {}
       try { pad2.stop(); } catch {}
+      try { if (pad3) pad3.stop(); } catch {}
       try { lfo.stop(); } catch {}
       if (arpeggioTimer) clearTimeout(arpeggioTimer);
       musicNodesRef.current = null;
     }
   }, []);
 
-  return { playMove, playRotate, playSoftDrop, playHardDrop, playClear, playCombo, playLevelUp, playHold, playGameOver, startMusic, stopMusic };
+  return { playMove, playRotate, playSoftDrop, playHardDrop, playClear, playClearZen, playCombo, playLevelUp, playHold, playGameOver, startMusic, startZenMusic, stopMusic };
 }
 
 function MiniGrid({shape, color, size=14, dimmed=false}) {
@@ -389,24 +460,34 @@ function MenuScreen({onStart}) {
       <div key={ch.id} style={{background:"#0a0a16",border:"1px solid #1a1a2e",borderRadius:12,padding:"22px 28px",marginBottom:24,maxWidth:420,width:"92%",animation:"fadeIn 0.25s ease-out"}}>
         <div style={{fontFamily:"'Orbitron'",fontSize:15,fontWeight:700,color:"#e0e0e0",marginBottom:5}}>{ch.icon} {ch.name}</div>
         <div style={{fontSize:12,color:"#666",marginBottom:18,lineHeight:1.5}}>{ch.desc}</div>
-        <div style={{fontFamily:"'Orbitron'",fontSize:9,letterSpacing:3,color:"#444",marginBottom:10}}>DIFFICULTY</div>
-        <div style={{display:"flex",gap:8,marginBottom:20}}>
-          {DIFF_LABELS.map((d,i) => (
-            <button key={d} className="diff-btn" onClick={()=>setSelDiff(i)} style={{
-              fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,textTransform:"uppercase",
-              padding:"7px 14px",border:`2px solid ${selDiff===i?DIFF_COLORS[d]:"#1a1a2e"}`,borderRadius:6,cursor:"pointer",transition:"all 0.2s",
-              background:selDiff===i?`${DIFF_COLORS[d]}12`:"transparent",color:selDiff===i?DIFF_COLORS[d]:"#333",
-            }}>{d}</button>
-          ))}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 24px"}}>
-          <StatPill label="TIME" value={cfg.timeLimit>0?formatTime(cfg.timeLimit):"Endless"} color="#00f0f0" />
-          <StatPill label="START LVL" value={cfg.startLevel} color="#f0a000" />
-          {target && <StatPill label="TARGET" value={ch.goal==="score"?target.toLocaleString()+" pts":target+" lines"} color="#a000f0" />}
-          {ch.goal==="survive" && <StatPill label="LVL UP" value={`Every ${cfg.levelUpEvery}s`} color="#a000f0" />}
-          {cfg.garbageRows>0 && <StatPill label="GARBAGE" value={cfg.garbageRows+" rows"} color="#f04040" />}
-          {cfg.garbageRows===0 && !target && ch.goal!=="survive" && <StatPill label="GARBAGE" value="None" color="#333" />}
-        </div>
+        {ch.id !== "zen" && (
+          <>
+            <div style={{fontFamily:"'Orbitron'",fontSize:9,letterSpacing:3,color:"#444",marginBottom:10}}>DIFFICULTY</div>
+            <div style={{display:"flex",gap:8,marginBottom:20}}>
+              {DIFF_LABELS.map((d,i) => (
+                <button key={d} className="diff-btn" onClick={()=>setSelDiff(i)} style={{
+                  fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,textTransform:"uppercase",
+                  padding:"7px 14px",border:`2px solid ${selDiff===i?DIFF_COLORS[d]:"#1a1a2e"}`,borderRadius:6,cursor:"pointer",transition:"all 0.2s",
+                  background:selDiff===i?`${DIFF_COLORS[d]}12`:"transparent",color:selDiff===i?DIFF_COLORS[d]:"#333",
+                }}>{d}</button>
+              ))}
+            </div>
+          </>
+        )}
+        {ch.id === "zen" ? (
+          <div style={{textAlign:"center",padding:"8px 0"}}>
+            <div style={{fontFamily:"'Orbitron'",fontSize:10,color:"#6a7090",letterSpacing:2}}>No time limit. No score. Just breathe.</div>
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 24px"}}>
+            <StatPill label="TIME" value={cfg.timeLimit>0?formatTime(cfg.timeLimit):"Endless"} color="#00f0f0" />
+            <StatPill label="START LVL" value={cfg.startLevel} color="#f0a000" />
+            {target && <StatPill label="TARGET" value={ch.goal==="score"?target.toLocaleString()+" pts":target+" lines"} color="#a000f0" />}
+            {ch.goal==="survive" && <StatPill label="LVL UP" value={`Every ${cfg.levelUpEvery}s`} color="#a000f0" />}
+            {cfg.garbageRows>0 && <StatPill label="GARBAGE" value={cfg.garbageRows+" rows"} color="#f04040" />}
+            {cfg.garbageRows===0 && !target && ch.goal!=="survive" && <StatPill label="GARBAGE" value="None" color="#333" />}
+          </div>
+        )}
       </div>
       <button className="play-btn" onClick={()=>onStart(ch,dk,cfg)} style={{
         fontFamily:"'Orbitron'",fontSize:16,fontWeight:900,letterSpacing:5,padding:"14px 52px",
@@ -586,7 +667,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   useEffect(() => {
     if (countdown <= 0) return;
     const id = setTimeout(() => {
-      if (countdown === 1) { setCountdown(0); setStarted(true); audio.startMusic(); }
+      if (countdown === 1) { setCountdown(0); setStarted(true); challenge.id === "zen" ? audio.startZenMusic() : audio.startMusic(); }
       else setCountdown(c => c-1);
     }, 700);
     return () => clearTimeout(id);
@@ -600,7 +681,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     setPreviewKeys(peek());
     const p = PIECES[first];
     const sc = Math.floor((COLS - p.shape[0].length) / 2);
-    setCurrent({shape:p.shape, color:p.color, key:first});
+    const color = challenge.id === "zen" ? ZEN_COLORS[first] : p.color;
+    setCurrent({shape:p.shape, color, key:first});
     setPos({r:0, c:sc});
   }, [started]);
 
@@ -652,8 +734,22 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     const key = dequeue();
     setPreviewKeys(peek());
     const p = PIECES[key];
+    const zenColor = challenge.id === "zen" ? ZEN_COLORS[key] : p.color;
     const sc = Math.floor((COLS - p.shape[0].length) / 2);
     if (collides(boardRef.current, p.shape, 0, sc)) {
+      if (challenge.id === "zen") {
+        // Dissolve bottom 5 rows instead of game over
+        setBoard(prev => {
+          const cleared = prev.slice(0, ROWS - 5);
+          const empty = Array.from({length: 5}, () => Array(COLS).fill(null));
+          return [...empty, ...cleared];
+        });
+        // Try spawning again
+        setCurrent({shape:p.shape, color:zenColor, key});
+        setPos({r:0, c:sc});
+        setHoldUsed(false);
+        return;
+      }
       setGameOver(true);
       audio.playGameOver();
       audio.stopMusic();
@@ -664,7 +760,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       }
       return;
     }
-    setCurrent({shape:p.shape, color:p.color, key});
+    setCurrent({shape:p.shape, color:zenColor, key});
     setPos({r:0, c:sc});
     setHoldUsed(false);
   }, [dequeue, peek, challenge, onResult, clearLockTimer]);
@@ -704,7 +800,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       if (isB2b) addLabel("BACK-TO-BACK", "#a0f0ff", 48);
       if (cleared === 4) { setShake(true); setTimeout(() => setShake(false), 300); }
 
-      audio.playClear(cleared);
+      challenge.id === "zen" ? audio.playClearZen(cleared) : audio.playClear(cleared);
       if (newCombo > 1) audio.playCombo(newCombo);
 
       setTimeout(() => {
@@ -760,9 +856,10 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   // Gravity
   useEffect(() => {
     if (!started || gameOver || paused) return;
+    if (challenge.id === "zen") return; // no gravity interval
     const id = setInterval(drop, DROP_SPEEDS[Math.min(level, DROP_SPEEDS.length-1)]);
     return () => clearInterval(id);
-  }, [started, gameOver, paused, level, drop]);
+  }, [started, gameOver, paused, level, drop, challenge.id]);
 
   const hardDrop = useCallback(() => {
     if (!currentRef.current || pausedRef.current) return;
@@ -808,8 +905,9 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       const p = PIECES[holdKey];
       const sc = Math.floor((COLS - p.shape[0].length) / 2);
       if (collides(boardRef.current, p.shape, 0, sc)) return;
+      const hColor = challenge.id === "zen" ? ZEN_COLORS[holdKey] : p.color;
       setHoldKey(curKey);
-      setCurrent({shape:p.shape, color:p.color, key:holdKey});
+      setCurrent({shape:p.shape, color:hColor, key:holdKey});
       setPos({r:0, c:sc});
     } else {
       setHoldKey(curKey);
@@ -817,7 +915,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     }
     setHoldUsed(true);
     audio.playHold();
-  }, [holdKey, spawnNext, clearLockTimer, audio]);
+  }, [holdKey, spawnNext, clearLockTimer, audio, challenge.id]);
 
   // DAS
   const stopDas = useCallback(() => {
@@ -860,16 +958,16 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); stopDas(); };
   }, [started, gameOver, paused, startDas, stopDas, drop, rotatePiece, hardDrop, holdPiece]);
 
-  // Soft drop hold
+  // Soft drop hold (disabled in zen mode — zen uses single-press drop only)
   useEffect(() => {
-    if (!started || gameOver || paused) return;
+    if (!started || gameOver || paused || challenge.id === "zen") return;
     let pressing = false, iv = null;
     const down = (e) => { if (e.key === "ArrowDown" && !pressing) { pressing = true; iv = setInterval(() => drop(), DAS_RATE); } };
     const up = (e) => { if (e.key === "ArrowDown") { pressing = false; if (iv) { clearInterval(iv); iv = null; } } };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); if (iv) clearInterval(iv); };
-  }, [started, gameOver, paused, drop]);
+  }, [started, gameOver, paused, drop, challenge.id]);
 
   // Touch
   const touchStart = useRef(null);
@@ -910,18 +1008,31 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   const mFs = isMobile ? 0.85 : 1; // mobile font scale
 
   // -- Hold panel content --
+  const isZen = challenge.id === "zen";
   const holdPanel = (
     <SidePanel title="HOLD" highlight={!holdUsed && !!holdKey}>
       <div style={{display:"flex",justifyContent:"center",padding:"6px 0",minHeight:isMobile?24:36}}>
         {holdPieceData
-          ? <MiniGrid shape={holdPieceData.shape} color={holdPieceData.color} size={isMobile?10:13} dimmed={holdUsed} />
+          ? <MiniGrid shape={holdPieceData.shape} color={isZen ? ZEN_COLORS[holdKey] : holdPieceData.color} size={isMobile?10:13} dimmed={holdUsed} />
           : <div style={{fontFamily:"'Orbitron'",fontSize:8,color:"#222",letterSpacing:1}}>{isMobile?"":"C / SHIFT"}</div>}
       </div>
     </SidePanel>
   );
 
   // -- Stats panels content --
-  const statsPanel = (
+  const statsPanel = isZen ? (
+    <>
+      <SidePanel title="ZEN">
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(16*mFs),fontWeight:900,color:"#c9a0dc",textAlign:"center",
+          textShadow:"0 0 12px #c9a0dc44"}}>🧘</div>
+      </SidePanel>
+      <SidePanel title="LINES">
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(12*mFs),fontWeight:700,color:"#a0b8e0",textAlign:"center"}}>
+          {lines}
+        </div>
+      </SidePanel>
+    </>
+  ) : (
     <>
       <SidePanel title="SCORE">
         <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(14*mFs),fontWeight:700,color:"#00f0f0",textAlign:"center",
@@ -951,7 +1062,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       <div style={{display:"flex",flexDirection:isMobile?"row":"column",gap:isMobile?6:10,alignItems:"center",padding:"4px 0"}}>
         {previewKeys.map((k, i) => {
           const p = PIECES[k];
-          return <MiniGrid key={`${k}-${i}`} shape={p.shape} color={p.color} size={isMobile?(i===0?11:9):(i===0?14:11)} dimmed={i>0} />;
+          const nColor = isZen ? ZEN_COLORS[k] : p.color;
+          return <MiniGrid key={`${k}-${i}`} shape={p.shape} color={nColor} size={isMobile?(i===0?11:9):(i===0?14:11)} dimmed={i>0} />;
         })}
         {previewKeys.length === 0 && <div style={{height:isMobile?30:80}} />}
       </div>
@@ -961,9 +1073,10 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   // -- Board content --
   const boardEl = (
     <div style={{
-      position:"relative",border:"2px solid #3a4060",borderRadius:8,
-      background:"linear-gradient(180deg, #10121e, #0c0e18)",boxShadow:"0 0 40px rgba(0,200,255,0.06),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)",padding:2,
-      animation: shake ? "boardShake 0.3s ease-out" : "none",
+      position:"relative",border:`2px solid ${isZen ? "#4a5580" : "#3a4060"}`,borderRadius:8,
+      background: isZen ? "linear-gradient(180deg, #1a2035, #1e2540)" : "linear-gradient(180deg, #10121e, #0c0e18)",
+      boxShadow:"0 0 40px rgba(0,200,255,0.06),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)",padding:2,
+      animation: shake ? "boardShake 0.3s ease-out" : isZen ? "zenBoardGlow 4s ease-in-out infinite" : "none",
     }}>
       <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,
         backgroundImage:`linear-gradient(rgba(80,100,160,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,0.15) 1px, transparent 1px)`,
@@ -975,7 +1088,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
           const baseColor = isGhost ? cell?.slice(0,7) : cell;
           return (
             <div key={i} style={{
-              width:CELL, height:CELL, borderRadius: cell ? 6 : 3,
+              width:CELL, height:CELL, borderRadius: cell ? (isZen ? 8 : 6) : 3,
               background: isFlash ? "#fff"
                 : cell && !isGhost
                   ? `linear-gradient(145deg, ${baseColor}ee, ${baseColor}99)`
@@ -983,7 +1096,9 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
                   ? `linear-gradient(145deg, ${baseColor}20, ${baseColor}10)`
                 : (r+(i%COLS))%2===0 ? "#12142200" : "#1618260a",
               boxShadow: cell && !isGhost
-                ? `inset 0 4px 6px rgba(255,255,255,0.35), inset 0 -3px 5px rgba(0,0,0,0.3), 0 0 8px ${baseColor}55, 0 2px 4px rgba(0,0,0,0.4)`
+                ? isZen
+                  ? `inset 0 4px 8px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.2), 0 0 12px ${baseColor}44, 0 2px 6px rgba(0,0,0,0.3)`
+                  : `inset 0 4px 6px rgba(255,255,255,0.35), inset 0 -3px 5px rgba(0,0,0,0.3), 0 0 8px ${baseColor}55, 0 2px 4px rgba(0,0,0,0.4)`
                 : isGhost ? `inset 0 2px 4px ${baseColor}15` : "none",
               transition: isFlash ? "none" : "background 0.06s, transform 0.15s",
               animation: isFlash ? "flashRow 0.2s ease-out"
@@ -1054,21 +1169,44 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes boardShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
         @keyframes jelloLand{0%{transform:scaleY(0.7) scaleX(1.15)}30%{transform:scaleY(1.12) scaleX(0.92)}50%{transform:scaleY(0.95) scaleX(1.04)}70%{transform:scaleY(1.03) scaleX(0.98)}100%{transform:scaleY(1) scaleX(1)}}
         @keyframes jelloIdle{0%,100%{transform:scaleY(1) scaleX(1)}50%{transform:scaleY(1.015) scaleX(0.99)}}
+        @keyframes zenFloat{0%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-40px) scale(1.3);opacity:0.6}100%{transform:translateY(0) scale(1);opacity:0.3}}
+        @keyframes zenBoardGlow{0%,100%{box-shadow:0 0 20px rgba(100,150,200,0.15),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 40px rgba(100,150,200,0.3),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}}
         .menu-btn:hover{color:#888!important;border-color:#333!important}
         .touch-btn{-webkit-tap-highlight-color:transparent}
         .touch-btn:active{opacity:0.7;transform:scale(0.93)}
       `}</style>
+
+      {/* Zen floating particles */}
+      {isZen && (
+        <div style={{position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden'}}>
+          {Array.from({length: 20}, (_, i) => (
+            <div key={i} style={{
+              position:'absolute',
+              width: 4 + (((i * 7 + 3) % 9)),
+              height: 4 + (((i * 7 + 3) % 9)),
+              borderRadius: '50%',
+              background: `rgba(${150+(i*17)%106}, ${180+(i*13)%76}, ${200+(i*11)%56}, ${0.15 + ((i*7)%20)*0.01})`,
+              left: `${(i * 5.3) % 100}%`,
+              top: `${(i * 4.7 + 10) % 100}%`,
+              animation: `zenFloat ${8 + (i % 5) * 2.4}s ease-in-out infinite`,
+              animationDelay: `${(i * 0.5) % 10}s`,
+            }} />
+          ))}
+        </div>
+      )}
 
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",gap:isMobile?6:12,marginBottom:isMobile?4:8,
         width:totalWidth,maxWidth:"98vw",justifyContent:"space-between",flexWrap:"wrap"}}>
         <button className="menu-btn" onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:2,
           padding:"4px 10px",border:"1px solid #1a1a2e",borderRadius:4,background:"transparent",color:"#333",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
-        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?8:10,color:"#444",letterSpacing:isMobile?1:2,textAlign:"center",flex:isMobile?1:undefined,minWidth:0}}>
+        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?8:10,color:isZen?"#6a7090":"#444",letterSpacing:isMobile?1:2,textAlign:"center",flex:isMobile?1:undefined,minWidth:0}}>
           {challenge.icon} {challenge.name}{" "}
-          <span style={{color:DIFF_COLORS[difficulty],fontSize:isMobile?7:9}}>{difficulty.toUpperCase()}</span>
+          {!isZen && <span style={{color:DIFF_COLORS[difficulty],fontSize:isMobile?7:9}}>{difficulty.toUpperCase()}</span>}
         </div>
-        {config.timeLimit > 0 ? (
+        {isZen ? (
+          <div style={{minWidth:isMobile?44:56}} />
+        ) : config.timeLimit > 0 ? (
           <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?14:18,fontWeight:900,color:timerColor,
             textShadow:`0 0 12px ${timerColor}55`,animation:timerUrgent?"urgentPulse 0.5s ease-in-out infinite":"none",
             minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
@@ -1117,21 +1255,34 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
             <div style={{flex:"0 0 auto",minWidth:60}}>{holdPanel}</div>
             <div style={{flex:"0 0 auto",minWidth:60}}>{nextPanel}</div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:"1 1 auto",minWidth:0}}>
-              <SidePanel title="SCORE">
-                <div style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#00f0f0",textAlign:"center"}}>{score.toLocaleString()}</div>
-              </SidePanel>
-              <SidePanel title="LNS">
-                <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>
-                  {target && challenge.goal === "lines" ? `${lines}/${target}` : lines}
-                </div>
-              </SidePanel>
-              <SidePanel title="LVL">
-                <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#f0a000",textAlign:"center"}}>{level}</div>
-              </SidePanel>
-              {combo > 1 && (
-                <SidePanel title="CMB">
-                  <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:900,color:"#f060a0",textAlign:"center"}}>{combo}x</div>
-                </SidePanel>
+              {isZen ? (
+                <>
+                  <SidePanel title="ZEN">
+                    <div style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:900,color:"#c9a0dc",textAlign:"center"}}>🧘</div>
+                  </SidePanel>
+                  <SidePanel title="LNS">
+                    <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0b8e0",textAlign:"center"}}>{lines}</div>
+                  </SidePanel>
+                </>
+              ) : (
+                <>
+                  <SidePanel title="SCORE">
+                    <div style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#00f0f0",textAlign:"center"}}>{score.toLocaleString()}</div>
+                  </SidePanel>
+                  <SidePanel title="LNS">
+                    <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>
+                      {target && challenge.goal === "lines" ? `${lines}/${target}` : lines}
+                    </div>
+                  </SidePanel>
+                  <SidePanel title="LVL">
+                    <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#f0a000",textAlign:"center"}}>{level}</div>
+                  </SidePanel>
+                  {combo > 1 && (
+                    <SidePanel title="CMB">
+                      <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:900,color:"#f060a0",textAlign:"center"}}>{combo}x</div>
+                    </SidePanel>
+                  )}
+                </>
               )}
             </div>
           </div>
