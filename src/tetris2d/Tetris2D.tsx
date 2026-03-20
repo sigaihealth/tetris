@@ -399,22 +399,27 @@ function useAudio() {
 function MiniGrid({shape, color, size=14, dimmed=false}) {
   if (!shape) return <div style={{width:size*4,height:size*2,minHeight:size*2}} />;
   const rows = shape.length, cols = shape[0].length;
+  // Bounding box of filled cells
+  let minR=rows,maxR=0,minC=cols,maxC=0;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) if(shape[r][c]){
+    if(r<minR)minR=r; if(r>maxR)maxR=r; if(c<minC)minC=c; if(c>maxC)maxC=c;
+  }
+  const gW=(maxC-minC+1)*size, gH=(maxR-minR+1)*size;
   return (
     <div style={{display:"grid",gridTemplateColumns:`repeat(${cols},${size}px)`,gap:0,opacity:dimmed?0.3:1,transition:"opacity 0.2s"}}>
       {shape.flat().map((v,i) => {
         if (!v) return <div key={i} style={{width:size,height:size}} />;
-        const r = Math.floor(i/cols), c = i%cols;
-        const up = r>0 && shape[r-1][c], dn = r<rows-1 && shape[r+1][c];
-        const lt = c>0 && shape[r][c-1], rt = c<cols-1 && shape[r][c+1];
-        const R = size*0.35;
-        return <div key={i} style={{width:size,height:size,position:'relative',overflow:'hidden',
-          borderRadius:`${!up&&!lt?R:0}px ${!up&&!rt?R:0}px ${!dn&&!rt?R:0}px ${!dn&&!lt?R:0}px`,
-          background:`linear-gradient(160deg, rgba(255,255,255,0.3), ${color}bb 30%, ${color}dd 55%, ${color}88 85%)`,
-          boxShadow:[
-            !up?`inset 0 ${size*0.15}px ${size*0.2}px rgba(255,255,255,0.45)`:'',
-            !dn?`inset 0 -${size*0.08}px ${size*0.12}px rgba(0,0,0,0.2)`:'',
-            `0 0 ${size*0.3}px ${color}33`,
-          ].filter(Boolean).join(', '),
+        const r=Math.floor(i/cols), c=i%cols;
+        const up=r>0&&shape[r-1][c], dn=r<rows-1&&shape[r+1][c];
+        const lt=c>0&&shape[r][c-1], rt=c<cols-1&&shape[r][c+1];
+        const offX=(c-minC)*size, offY=(r-minR)*size;
+        return <div key={i} style={{width:size,height:size,
+          borderRadius:`${!up&&!lt?2:0}px ${!up&&!rt?2:0}px ${!dn&&!rt?2:0}px ${!dn&&!lt?2:0}px`,
+          backgroundColor:`${color}cc`,
+          backgroundImage:`radial-gradient(ellipse at ${(0.3*gW-offX)}px ${(0.2*gH-offY)}px, rgba(255,255,255,0.5) 0%, transparent ${Math.max(gW,gH)*0.6}px), linear-gradient(180deg, rgba(255,255,255,0.1), transparent 40%, rgba(0,0,0,0.06))`,
+          backgroundSize:`${gW}px ${gH}px, ${gW}px ${gH}px`,
+          backgroundPosition:`${-offX}px ${-offY}px, ${-offX}px ${-offY}px`,
+          boxShadow:[!up?`inset 0 1px 0 rgba(255,255,255,0.35)`:'',!dn?`inset 0 -1px 0 rgba(0,0,0,0.12)`:''].filter(Boolean).join(','),
         }} />;
       })}
     </div>
@@ -1110,72 +1115,83 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       animation: shake ? "boardShake 0.3s ease-out" : isZen ? "zenBoardGlow 4s ease-in-out infinite" : "none",
     }}>
       <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:0,
-        backgroundImage:`linear-gradient(rgba(80,100,160,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,0.12) 1px, transparent 1px)`,
+        backgroundImage:`linear-gradient(rgba(80,100,160,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,0.1) 1px, transparent 1px)`,
         backgroundSize:`${CELL}px ${CELL}px`}}>
-        {display.flat().map((cell, i) => {
-          const r = Math.floor(i/COLS);
-          const c = i % COLS;
-          const isFlash = flashRows.includes(r);
-          const isGhost = cell && cell.length > 7;
-          const baseColor = isGhost ? cell?.slice(0,7) : cell;
-
-          if (!cell || isFlash) {
-            return <div key={i} style={{
-              width:CELL, height:CELL,
-              background: isFlash ? "#fff" : "transparent",
-              animation: isFlash ? "flashRow 0.2s ease-out" : "none",
-            }} />;
-          }
-
-          // Check neighbors — same base color = connected (unified jelly block)
-          const getBase = (rr, cc) => {
-            if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return null;
-            const v = display[rr][cc];
-            if (!v) return null;
-            return v.length > 7 ? v.slice(0,7) : v;
+        {(() => {
+          // Compute connected components via flood fill — each group rendered as ONE jelly piece
+          const gid = Array.from({length:ROWS}, ()=>Array(COLS).fill(-1));
+          const ginfo = [];
+          const flood = (r,c,color,id) => {
+            if(r<0||r>=ROWS||c<0||c>=COLS||gid[r][c]>=0) return;
+            const v=display[r]?.[c]; if(!v) return;
+            const bc=v.length>7?v.slice(0,7):v;
+            if(bc!==color) return;
+            gid[r][c]=id;
+            const g=ginfo[id];
+            if(r<g.minR)g.minR=r; if(r>g.maxR)g.maxR=r;
+            if(c<g.minC)g.minC=c; if(c>g.maxC)g.maxC=c;
+            flood(r-1,c,color,id);flood(r+1,c,color,id);flood(r,c-1,color,id);flood(r,c+1,color,id);
           };
-          const same = (rr, cc) => getBase(rr, cc) === baseColor;
-          const up = same(r-1, c), dn = same(r+1, c), lt = same(r, c-1), rt = same(r, c+1);
-          const R = CELL * (isZen ? 0.38 : 0.32);
-          const tl = (!up && !lt) ? R : 0;
-          const tr = (!up && !rt) ? R : 0;
-          const bl = (!dn && !lt) ? R : 0;
-          const br = (!dn && !rt) ? R : 0;
-
-          if (isGhost) {
-            return <div key={i} style={{
-              width:CELL, height:CELL,
-              borderRadius: `${tl}px ${tr}px ${br}px ${bl}px`,
-              background: `${baseColor}15`,
-              boxShadow: `inset 0 0 ${CELL*0.3}px ${baseColor}10`,
-            }} />;
+          for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+            if(gid[r][c]<0 && display[r][c]) {
+              const v=display[r][c], bc=v.length>7?v.slice(0,7):v;
+              ginfo.push({color:bc,minR:r,maxR:r,minC:c,maxC:c,ghost:v.length>7});
+              flood(r,c,bc,ginfo.length-1);
+            }
           }
 
-          return (
-            <div key={i} className="jelly-block" style={{
-              width:CELL, height:CELL,
-              borderRadius: `${tl}px ${tr}px ${br}px ${bl}px`,
-              background: `linear-gradient(160deg, rgba(255,255,255,0.35) 0%, ${baseColor}bb 25%, ${baseColor}dd 50%, ${baseColor}99 80%, rgba(0,0,0,0.15) 100%)`,
-              boxShadow: [
-                // Glossy top highlight
-                !up ? `inset 0 ${CELL*0.18}px ${CELL*0.25}px rgba(255,255,255,0.5)` : '',
-                // Bottom shadow
-                !dn ? `inset 0 -${CELL*0.1}px ${CELL*0.15}px rgba(0,0,0,0.2)` : '',
-                // Left highlight
-                !lt ? `inset ${CELL*0.08}px 0 ${CELL*0.12}px rgba(255,255,255,0.15)` : '',
-                // Right shadow
-                !rt ? `inset -${CELL*0.05}px 0 ${CELL*0.08}px rgba(0,0,0,0.1)` : '',
-                // Outer glow
-                `0 0 ${CELL*0.3}px ${baseColor}33`,
-                // Drop shadow
-                !dn ? `0 ${CELL*0.06}px ${CELL*0.1}px rgba(0,0,0,0.3)` : '',
-              ].filter(Boolean).join(', '),
-              transition: "transform 0.1s ease-out",
-              animation: `jelloBreath ${2.5 + (i % 5) * 0.3}s ease-in-out infinite`,
-              animationDelay: `${(i * 0.13) % 2.5}s`,
-            }} />
-          );
-        })}
+          return display.flat().map((cell,i) => {
+            const r=Math.floor(i/COLS), c=i%COLS;
+            const isFlash=flashRows.includes(r);
+            if(!cell||isFlash) return <div key={i} style={{width:CELL,height:CELL,background:isFlash?"#fff":"transparent",animation:isFlash?"flashRow 0.2s ease-out":"none"}} />;
+
+            const id=gid[r][c];
+            const g=ginfo[id];
+            const bc=g.color;
+            const isGhost=g.ghost;
+
+            // Neighbor checks for edge detection
+            const sameAt=(rr,cc)=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&gid[rr][cc]===id;
+            const up=sameAt(r-1,c),dn=sameAt(r+1,c),lt=sameAt(r,c-1),rt=sameAt(r,c+1);
+
+            // Sharp corners with just a hint of rounding on outer corners (like firm jelly)
+            const R=3;
+            const tl=(!up&&!lt)?R:0, tr=(!up&&!rt)?R:0, bl=(!dn&&!lt)?R:0, br=(!dn&&!rt)?R:0;
+
+            if(isGhost) return <div key={i} style={{width:CELL,height:CELL,borderRadius:`${tl}px ${tr}px ${br}px ${bl}px`,background:`${bc}18`,border:!up||!dn||!lt||!rt?`1px solid ${bc}25`:'none'}} />;
+
+            // Unified gradient — spans the whole connected group so there's no per-cell seam
+            const gW=(g.maxC-g.minC+1)*CELL, gH=(g.maxR-g.minR+1)*CELL;
+            const offX=(c-g.minC)*CELL, offY=(r-g.minR)*CELL;
+
+            return (
+              <div key={i} className="jelly-block" style={{
+                width:CELL, height:CELL,
+                borderRadius:`${tl}px ${tr}px ${br}px ${bl}px`,
+                // Body: flat translucent color (unified across group)
+                backgroundColor:`${bc}cc`,
+                // Specular highlight + depth gradient spanning the WHOLE piece
+                backgroundImage:[
+                  `radial-gradient(ellipse at ${((0.3*gW-offX)/CELL)*100/(1)}% ${((0.2*gH-offY)/CELL)*100/(1)}%, rgba(255,255,255,0.55) 0%, transparent ${Math.max(gW,gH)*0.7}px)`,
+                  `linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 40%, rgba(0,0,0,0.08) 100%)`,
+                ].join(','),
+                backgroundSize:`${gW}px ${gH}px, ${gW}px ${gH}px`,
+                backgroundPosition:`${-offX}px ${-offY}px, ${-offX}px ${-offY}px`,
+                boxShadow:[
+                  !up?`inset 0 1.5px 0 rgba(255,255,255,0.4)`:'',
+                  !dn?`inset 0 -1.5px 0 rgba(0,0,0,0.15)`:'',
+                  !lt?`inset 1.5px 0 0 rgba(255,255,255,0.2)`:'',
+                  !rt?`inset -1.5px 0 0 rgba(0,0,0,0.08)`:'',
+                  !dn?`0 2px 6px rgba(0,0,0,0.25)`:'',
+                  `0 0 ${CELL*0.25}px ${bc}22`,
+                ].filter(Boolean).join(','),
+                transition:"transform 0.1s cubic-bezier(0.34,1.56,0.64,1)",
+                animation:`jelloBreath ${2.8+(i%5)*0.25}s ease-in-out infinite`,
+                animationDelay:`${(i*0.11)%2.5}s`,
+              }} />
+            );
+          });
+        })()}
       </div>
 
       {/* Action labels */}
@@ -1235,12 +1251,11 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes urgentPulse{0%,100%{color:#f04040}50%{color:#f0404055}}
         @keyframes labelFloat{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}60%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(1.15)}}
         @keyframes boardShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
-        @keyframes jelloLand{0%{transform:scaleY(0.6) scaleX(1.25)}15%{transform:scaleY(1.18) scaleX(0.85)}30%{transform:scaleY(0.9) scaleX(1.08)}45%{transform:scaleY(1.06) scaleX(0.95)}60%{transform:scaleY(0.97) scaleX(1.03)}75%{transform:scaleY(1.02) scaleX(0.99)}100%{transform:scaleY(1) scaleX(1)}}
-        @keyframes jelloBreath{0%,100%{transform:scale(1)}33%{transform:scale(1.015,0.985)}66%{transform:scale(0.985,1.015)}}
-        .jelly-block{position:relative;overflow:hidden}
-        .jelly-block::after{content:'';position:absolute;top:8%;left:15%;width:35%;height:25%;background:radial-gradient(ellipse,rgba(255,255,255,0.5) 0%,transparent 70%);border-radius:50%;pointer-events:none}
-        .jelly-block:hover{transform:scale(1.06)!important;filter:brightness(1.12) saturate(1.1);z-index:2}
-        .jelly-block:active{transform:scaleY(0.78) scaleX(1.18)!important;filter:brightness(1.15) saturate(1.15);z-index:2}
+        @keyframes jelloLand{0%{transform:scaleY(0.55) scaleX(1.3)}12%{transform:scaleY(1.2) scaleX(0.82)}24%{transform:scaleY(0.88) scaleX(1.1)}36%{transform:scaleY(1.08) scaleX(0.94)}50%{transform:scaleY(0.96) scaleX(1.03)}65%{transform:scaleY(1.02) scaleX(0.99)}100%{transform:scaleY(1) scaleX(1)}}
+        @keyframes jelloBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.008,0.992)}}
+        .jelly-block{position:relative}
+        .jelly-block:hover{transform:scale(1.04)!important;filter:brightness(1.08);z-index:2}
+        .jelly-block:active{transform:scaleY(0.82) scaleX(1.14)!important;filter:brightness(1.1);z-index:2;transition:transform 0.05s!important}
         @keyframes zenFloat{0%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-40px) scale(1.3);opacity:0.6}100%{transform:translateY(0) scale(1);opacity:0.3}}
         @keyframes zenBoardGlow{0%,100%{box-shadow:0 0 20px rgba(100,150,200,0.15),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 40px rgba(100,150,200,0.3),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}}
         .menu-btn:hover{color:#888!important;border-color:#333!important}
