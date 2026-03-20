@@ -10,7 +10,12 @@ const { Engine, World, Bodies, Body, Composite, Events, Runner } = Matter;
 
 const COLS = 10;
 const ROWS = 20;
-const getCellSize = () => Math.min(42, Math.floor((window.innerHeight - 120) / 22));
+const getCellSize = () => {
+  const mobile = window.innerWidth < 700;
+  const maxH = Math.floor((window.innerHeight - (mobile ? 200 : 120)) / 22);
+  const maxW = Math.floor((window.innerWidth - 40) / (COLS + 2));
+  return Math.max(18, Math.min(mobile ? 28 : 42, maxH, maxW));
+};
 
 const PIECE_DEFS = {
   I: { cells: [[0,0],[1,0],[2,0],[3,0]], color: '#22ddee' },
@@ -557,17 +562,96 @@ export default function PhysicsTetris() {
     return () => window.removeEventListener('resize', onResize);
   }, [init]);
 
+  // Expose keys ref so touch buttons can set them
+  const keysRef = useRef({});
+  useEffect(() => {
+    keysRef.current = {};
+  }, []);
+
+  // Touch button handlers — set/clear keys just like keyboard
+  const touchStart = useCallback((code) => {
+    keysRef.current[code] = true;
+    // For one-shot actions (rotate, slam), also trigger via a custom event
+    if (code === 'ArrowUp' || code === 'Space') {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+    }
+  }, []);
+  const touchEnd = useCallback((code) => {
+    keysRef.current[code] = false;
+  }, []);
+
+  // Patch keys in the game loop — merge touch keys into the existing keys object
+  // We do this by overriding the init effect to also read keysRef
+  // Actually simpler: just dispatch keydown/keyup events from touch buttons
+
+  const isMobile = typeof window !== 'undefined' && (window.innerWidth < 700 || 'ontouchstart' in window);
+
+  // Touch button component
+  const TB = useCallback(({ label, code, wide, tall }) => (
+    <button
+      onTouchStart={(e) => { e.preventDefault(); window.dispatchEvent(new KeyboardEvent('keydown', { code })); }}
+      onTouchEnd={(e) => { e.preventDefault(); window.dispatchEvent(new KeyboardEvent('keyup', { code })); }}
+      onMouseDown={() => window.dispatchEvent(new KeyboardEvent('keydown', { code }))}
+      onMouseUp={() => window.dispatchEvent(new KeyboardEvent('keyup', { code }))}
+      style={{
+        width: wide ? 90 : 62, height: tall ? 62 : 52,
+        borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)',
+        background: 'rgba(255,255,255,0.06)', color: 'rgba(200,220,255,0.7)',
+        fontSize: wide ? 12 : 20, fontFamily: "'Orbitron', monospace", fontWeight: 700,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', touchAction: 'none', userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >{label}</button>
+  ), []);
+
   return (
     <div style={{
       position: 'fixed',
       inset: 0,
       background: '#0a0e1a',
       zIndex: 50,
+      touchAction: 'none',
     }}>
       <canvas
         ref={canvasRef}
         style={{ display: 'block', width: '100%', height: '100%' }}
       />
+
+      {/* Mobile touch controls */}
+      {isMobile && (
+        <div style={{
+          position: 'fixed', bottom: 12, left: 0, right: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+          zIndex: 60, pointerEvents: 'auto',
+        }}>
+          {/* Top row: Rotate + Slam */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <TB label="↻" code="ArrowUp" />
+            <TB label="SLAM" code="Space" wide />
+          </div>
+          {/* Bottom row: Left, Down, Right */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <TB label="←" code="ArrowLeft" tall />
+            <TB label="↓" code="ArrowDown" tall />
+            <TB label="→" code="ArrowRight" tall />
+          </div>
+        </div>
+      )}
+
+      {/* Back button for mobile */}
+      {isMobile && (
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('physics-tetris-exit'))}
+          style={{
+            position: 'fixed', top: 12, left: 12, zIndex: 60,
+            padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.06)', color: 'rgba(200,220,255,0.6)',
+            fontFamily: "'Orbitron', monospace", fontSize: 10, fontWeight: 700,
+            letterSpacing: 2, cursor: 'pointer',
+          }}
+        >← MENU</button>
+      )}
     </div>
   );
 }
