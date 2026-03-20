@@ -11,13 +11,13 @@ const DAS_DELAY = 170;
 const DAS_RATE = 50;
 
 const PIECES = {
-  I:{shape:[[1,1,1,1]],color:"#00f0f0",key:"I"},
-  O:{shape:[[1,1],[1,1]],color:"#f0f000",key:"O"},
-  T:{shape:[[0,1,0],[1,1,1]],color:"#a000f0",key:"T"},
-  S:{shape:[[0,1,1],[1,1,0]],color:"#00f000",key:"S"},
-  Z:{shape:[[1,1,0],[0,1,1]],color:"#f00000",key:"Z"},
-  J:{shape:[[1,0,0],[1,1,1]],color:"#0000f0",key:"J"},
-  L:{shape:[[0,0,1],[1,1,1]],color:"#f0a000",key:"L"},
+  I:{shape:[[1,1,1,1]],color:"#00e5ff",key:"I"},
+  O:{shape:[[1,1],[1,1]],color:"#ffea00",key:"O"},
+  T:{shape:[[0,1,0],[1,1,1]],color:"#d500f9",key:"T"},
+  S:{shape:[[0,1,1],[1,1,0]],color:"#00e676",key:"S"},
+  Z:{shape:[[1,1,0],[0,1,1]],color:"#ff1744",key:"Z"},
+  J:{shape:[[1,0,0],[1,1,1]],color:"#2979ff",key:"J"},
+  L:{shape:[[0,0,1],[1,1,1]],color:"#ff9100",key:"L"},
 };
 const PIECE_KEYS = Object.keys(PIECES);
 
@@ -112,8 +112,9 @@ function MiniGrid({shape, color, size=14, dimmed=false}) {
   return (
     <div style={{display:"grid",gridTemplateColumns:`repeat(${shape[0].length},${size}px)`,gap:1,opacity:dimmed?0.3:1,transition:"opacity 0.2s"}}>
       {shape.flat().map((v,i) => (
-        <div key={i} style={{width:size,height:size,borderRadius:2,background:v?color:"transparent",
-          boxShadow:v?`0 0 5px ${color}88`:"none"}} />
+        <div key={i} style={{width:size,height:size,borderRadius:size*0.25,
+          background:v?`linear-gradient(145deg, ${color}ee, ${color}88)`:"transparent",
+          boxShadow:v?`inset 0 ${size*0.15}px ${size*0.3}px rgba(255,255,255,0.4), inset 0 -${size*0.1}px ${size*0.2}px rgba(0,0,0,0.3), 0 0 ${size*0.4}px ${color}66`:"none"}} />
       ))}
     </div>
   );
@@ -676,6 +677,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes urgentPulse{0%,100%{color:#f04040}50%{color:#f0404055}}
         @keyframes labelFloat{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}60%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(1.15)}}
         @keyframes boardShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+        @keyframes jelloLand{0%{transform:scaleY(0.7) scaleX(1.15)}30%{transform:scaleY(1.12) scaleX(0.92)}50%{transform:scaleY(0.95) scaleX(1.04)}70%{transform:scaleY(1.03) scaleX(0.98)}100%{transform:scaleY(1) scaleX(1)}}
+        @keyframes jelloIdle{0%,100%{transform:scaleY(1) scaleX(1)}50%{transform:scaleY(1.015) scaleX(0.99)}}
         .menu-btn:hover{color:#888!important;border-color:#333!important}
       `}</style>
 
@@ -740,26 +743,35 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
         {/* Board */}
         <div style={{
-          position:"relative",border:"2px solid #1a1a2e",borderRadius:6,
-          background:"#06060e",boxShadow:"0 0 30px #00f0f008,inset 0 0 60px #00000088",padding:2,
+          position:"relative",border:"2px solid #3a4060",borderRadius:8,
+          background:"linear-gradient(180deg, #10121e, #0c0e18)",boxShadow:"0 0 40px rgba(0,200,255,0.06),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)",padding:2,
           animation: shake ? "boardShake 0.3s ease-out" : "none",
         }}>
-          <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1}}>
+          <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,
+            backgroundImage:`linear-gradient(rgba(80,100,160,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,0.15) 1px, transparent 1px)`,
+            backgroundSize:`${CELL+1}px ${CELL+1}px`}}>
             {display.flat().map((cell, i) => {
               const r = Math.floor(i/COLS);
               const isFlash = flashRows.includes(r);
               const isGhost = cell && cell.length > 7;
+              const baseColor = isGhost ? cell?.slice(0,7) : cell;
               return (
                 <div key={i} style={{
-                  width:CELL, height:CELL, borderRadius:3,
+                  width:CELL, height:CELL, borderRadius: cell ? 6 : 3,
                   background: isFlash ? "#fff"
-                    : cell ? (isGhost ? `${cell.slice(0,7)}18` : cell)
-                    : (r+(i%COLS))%2===0 ? "#0a0a16" : "#0c0c1a",
+                    : cell && !isGhost
+                      ? `linear-gradient(145deg, ${baseColor}ee, ${baseColor}99)`
+                    : isGhost
+                      ? `linear-gradient(145deg, ${baseColor}20, ${baseColor}10)`
+                    : (r+(i%COLS))%2===0 ? "#12142200" : "#1618260a",
                   boxShadow: cell && !isGhost
-                    ? `inset 0 0 8px ${cell}66, 0 0 4px ${cell}44`
-                    : isGhost ? `inset 0 0 4px ${cell?.slice(0,7)}22` : "none",
-                  transition: isFlash ? "none" : "background 0.06s",
-                  animation: isFlash ? "flashRow 0.2s ease-out" : "none",
+                    ? `inset 0 4px 6px rgba(255,255,255,0.35), inset 0 -3px 5px rgba(0,0,0,0.3), 0 0 8px ${baseColor}55, 0 2px 4px rgba(0,0,0,0.4)`
+                    : isGhost ? `inset 0 2px 4px ${baseColor}15` : "none",
+                  transition: isFlash ? "none" : "background 0.06s, transform 0.15s",
+                  animation: isFlash ? "flashRow 0.2s ease-out"
+                    : cell && !isGhost ? "jelloIdle 3s ease-in-out infinite" : "none",
+                  animationDelay: cell && !isGhost ? `${(i * 0.1) % 2}s` : "0s",
+                  border: cell && !isGhost ? `1px solid ${baseColor}44` : "none",
                 }} />
               );
             })}
