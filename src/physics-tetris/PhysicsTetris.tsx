@@ -407,6 +407,107 @@ export default function PhysicsTetris() {
       settledBodies.push(activePiece);
       score += 1;
       activePiece = null;
+
+      // --- LINE CLEARING ---
+      // Check each row: if 8+ out of 10 columns are filled, clear it
+      const CLEAR_THRESHOLD = Math.max(COLS - 2, Math.floor(COLS * 0.8)); // 8 of 10
+      const rowsToClear: number[] = [];
+      for (let r = 0; r < ROWS + 4; r++) {
+        let filled = 0;
+        for (let c = 0; c < COLS; c++) if (gridOccupied[r][c]) filled++;
+        if (filled >= CLEAR_THRESHOLD) rowsToClear.push(r);
+      }
+
+      if (rowsToClear.length > 0) {
+        score += rowsToClear.length * 100;
+
+        // Find which bodies have cells in cleared rows, and which cells to remove
+        const bodiesToRemove = new Set<any>();
+        const rowSet = new Set(rowsToClear);
+
+        for (const body of settledBodies) {
+          const type = body.pieceType;
+          const cells = PIECE_DEFS[type as keyof typeof PIECE_DEFS]?.cells;
+          if (!cells) continue;
+
+          let sumX = 0, sumY = 0;
+          for (const [cx, cy] of cells) { sumX += cx; sumY += cy; }
+          const cenX = sumX / cells.length, cenY = sumY / cells.length;
+          const cos = Math.cos(body.angle), sin = Math.sin(body.angle);
+
+          let anyInClearedRow = false;
+          for (const [cx, cy] of cells) {
+            const lx = (cx - cenX) * cellSize, ly = (cy - cenY) * cellSize;
+            const wy = body.position.y + lx * sin + ly * cos;
+            const gr = Math.round((wy - offsetY - cellSize / 2) / cellSize);
+            if (rowSet.has(gr)) { anyInClearedRow = true; break; }
+          }
+          if (anyInClearedRow) bodiesToRemove.add(body);
+        }
+
+        // Remove those bodies from physics world and settled list
+        for (const body of bodiesToRemove) {
+          Composite.remove(engine.world, body);
+        }
+        settledBodies = settledBodies.filter(b => !bodiesToRemove.has(b));
+
+        // Make remaining pieces above the cleared rows non-static so they fall
+        const lowestClearedRow = Math.max(...rowsToClear);
+        const lowestClearedY = offsetY + lowestClearedRow * cellSize + cellSize / 2;
+        for (const body of settledBodies) {
+          if (body.position.y < lowestClearedY) {
+            Body.setStatic(body, false);
+            Body.setVelocity(body, { x: 0, y: 0.5 }); // gentle nudge down
+          }
+        }
+
+        // Rebuild occupancy grid
+        for (let r = 0; r < ROWS + 4; r++) for (let c = 0; c < COLS; c++) gridOccupied[r][c] = false;
+        for (const body of settledBodies) markOccupied(body);
+
+        // After a delay, re-settle the falling pieces
+        setTimeout(() => {
+          for (const body of settledBodies) {
+            if (!body.isStatic) {
+              const vel = body.velocity;
+              const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+              if (speed < 0.5) {
+                // Re-snap and lock
+                const la = Math.round(body.angle / (Math.PI / 2)) * (Math.PI / 2);
+                Body.setAngle(body, la);
+
+                const btype = body.pieceType;
+                const bcells = PIECE_DEFS[btype as keyof typeof PIECE_DEFS]?.cells;
+                if (bcells) {
+                  let sx = 0, sy = 0;
+                  for (const [cx, cy] of bcells) { sx += cx; sy += cy; }
+                  const cX = sx / bcells.length, cY = sy / bcells.length;
+                  const bcos = Math.cos(la), bsin = Math.sin(la);
+                  const lx0 = (bcells[0][0] - cX) * cellSize, ly0 = (bcells[0][1] - cY) * cellSize;
+                  const wx0 = body.position.x + lx0 * bcos - ly0 * bsin;
+                  const wy0 = body.position.y + lx0 * bsin + ly0 * bcos;
+                  const sc = Math.round((wx0 - offsetX - cellSize / 2) / cellSize);
+                  const sr = Math.round((wy0 - offsetY - cellSize / 2) / cellSize);
+                  const tx = offsetX + sc * cellSize + cellSize / 2;
+                  const ty = offsetY + sr * cellSize + cellSize / 2;
+                  Body.setPosition(body, {
+                    x: tx - lx0 * bcos + ly0 * bsin,
+                    y: ty - lx0 * bsin - ly0 * bcos,
+                  });
+                }
+
+                Body.setVelocity(body, { x: 0, y: 0 });
+                Body.setAngularVelocity(body, 0);
+                Body.setStatic(body, true);
+                markOccupied(body);
+              }
+            }
+          }
+          // Rebuild grid
+          for (let r = 0; r < ROWS + 4; r++) for (let c = 0; c < COLS; c++) gridOccupied[r][c] = false;
+          for (const body of settledBodies) markOccupied(body);
+        }, 800);
+      }
     }
 
     spawnPiece();
