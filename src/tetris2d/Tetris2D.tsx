@@ -107,6 +107,212 @@ function useQueue() {
   return {init, dequeue, peek};
 }
 
+// ==================== ASMR AUDIO ====================
+function useAudio() {
+  const ctxRef = useRef(null);
+  const musicNodesRef = useRef(null);
+  const musicOnRef = useRef(false);
+
+  const getCtx = useCallback(() => {
+    if (!ctxRef.current) ctxRef.current = new AudioContext();
+    if (ctxRef.current.state === 'suspended') ctxRef.current.resume();
+    return ctxRef.current;
+  }, []);
+
+  // Soft ASMR move — gentle tap
+  const playMove = useCallback(() => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const n = ctx.createBufferSource();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.2));
+    n.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3000; f.Q.value = 2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    n.connect(f); f.connect(g); g.connect(ctx.destination);
+    n.start(t); n.stop(t + 0.03);
+  }, [getCtx]);
+
+  // Satisfying rotate — soft bubble pop
+  const playRotate = useCallback(() => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(600, t);
+    o.frequency.exponentialRampToValueAtTime(1200, t + 0.06);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + 0.08);
+    // Add soft pop noise
+    const n = ctx.createBufferSource();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.02, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
+    n.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 5000; f.Q.value = 1;
+    const gn = ctx.createGain(); gn.gain.setValueAtTime(0.08, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+    n.connect(f); f.connect(gn); gn.connect(ctx.destination);
+    n.start(t); n.stop(t + 0.025);
+  }, [getCtx]);
+
+  // Soft drop — gentle thud
+  const playSoftDrop = useCallback(() => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(60, t + 0.08);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + 0.08);
+  }, [getCtx]);
+
+  // Hard drop — satisfying deep thump + crunch
+  const playHardDrop = useCallback(() => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(100, t);
+    o.frequency.exponentialRampToValueAtTime(35, t + 0.2);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + 0.2);
+    // Crunch noise
+    const n = ctx.createBufferSource();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.3));
+    n.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 800;
+    const gn = ctx.createGain(); gn.gain.setValueAtTime(0.15, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    n.connect(f); f.connect(gn); gn.connect(ctx.destination);
+    n.start(t); n.stop(t + 0.08);
+  }, [getCtx]);
+
+  // Line clear — sparkly chime cascade
+  const playClear = useCallback((count) => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const notes = [523, 659, 784, 1047, 1319];
+    const num = Math.min(count + 2, notes.length);
+    for (let i = 0; i < num; i++) {
+      const delay = i * 0.06;
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = notes[i];
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.15, t + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.3);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t + delay); o.stop(t + delay + 0.3);
+    }
+    // Shimmer noise
+    const n = ctx.createBufferSource();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.4));
+    n.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 6000; f.Q.value = 0.5;
+    const gn = ctx.createGain(); gn.gain.setValueAtTime(0.06, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    n.connect(f); f.connect(gn); gn.connect(ctx.destination);
+    n.start(t); n.stop(t + 0.25);
+  }, [getCtx]);
+
+  // Combo — rising bubbly tone
+  const playCombo = useCallback((count) => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const freq = 400 + count * 150;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 1.5, t + 0.12);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + 0.15);
+  }, [getCtx]);
+
+  // Level up — ascending arpeggio
+  const playLevelUp = useCallback(() => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    [523, 659, 784, 1047].forEach((freq, i) => {
+      const d = i * 0.08;
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.2, t + d);
+      g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.15);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t + d); o.stop(t + d + 0.15);
+    });
+  }, [getCtx]);
+
+  // Hold piece — soft whoosh
+  const playHold = useCallback(() => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(400, t);
+    o.frequency.exponentialRampToValueAtTime(250, t + 0.1);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + 0.1);
+  }, [getCtx]);
+
+  // Game over — sad descending
+  const playGameOver = useCallback(() => {
+    const ctx = getCtx(); const t = ctx.currentTime;
+    [523, 440, 349, 262].forEach((freq, i) => {
+      const d = i * 0.2;
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.2, t + d);
+      g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.35);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t + d); o.stop(t + d + 0.35);
+    });
+  }, [getCtx]);
+
+  // Ambient lo-fi music — soft pads + gentle arpeggios
+  const startMusic = useCallback(() => {
+    if (musicOnRef.current) return;
+    musicOnRef.current = true;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const master = ctx.createGain(); master.gain.value = 0.06; master.connect(ctx.destination);
+
+    // Warm pad — two detuned oscillators
+    const pad1 = ctx.createOscillator(); pad1.type = 'sine'; pad1.frequency.value = 65.41;
+    const pad2 = ctx.createOscillator(); pad2.type = 'sine'; pad2.frequency.value = 98.0;
+    const padGain = ctx.createGain(); padGain.gain.value = 1.0;
+    const padFilter = ctx.createBiquadFilter(); padFilter.type = 'lowpass'; padFilter.frequency.value = 250;
+    // LFO for gentle movement
+    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.25;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 4;
+    lfo.connect(lfoGain); lfoGain.connect(pad1.frequency);
+    pad1.connect(padFilter); pad2.connect(padFilter); padFilter.connect(padGain); padGain.connect(master);
+    pad1.start(t); pad2.start(t); lfo.start(t);
+
+    // Gentle arpeggio loop
+    const scale = [130.81, 164.81, 196.0, 261.63, 329.63, 392.0];
+    let arpeggioTimer = null;
+    const scheduleArpeggio = () => {
+      if (!musicOnRef.current) return;
+      const ct = ctx.currentTime;
+      const tempo = 0.28;
+      const numNotes = 3 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < numNotes; i++) {
+        const freq = scale[Math.floor(Math.random() * scale.length)];
+        const d = i * tempo;
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.5, ct + d);
+        g.gain.exponentialRampToValueAtTime(0.001, ct + d + tempo * 0.7);
+        o.connect(g); g.connect(master);
+        o.start(ct + d); o.stop(ct + d + tempo * 0.7);
+      }
+      arpeggioTimer = setTimeout(scheduleArpeggio, (numNotes * tempo + 0.8 + Math.random() * 0.5) * 1000);
+    };
+    scheduleArpeggio();
+
+    musicNodesRef.current = { pad1, pad2, lfo, master, arpeggioTimer };
+  }, [getCtx]);
+
+  const stopMusic = useCallback(() => {
+    musicOnRef.current = false;
+    if (musicNodesRef.current) {
+      const { pad1, pad2, lfo, arpeggioTimer } = musicNodesRef.current;
+      try { pad1.stop(); } catch {}
+      try { pad2.stop(); } catch {}
+      try { lfo.stop(); } catch {}
+      if (arpeggioTimer) clearTimeout(arpeggioTimer);
+      musicNodesRef.current = null;
+    }
+  }, []);
+
+  return { playMove, playRotate, playSoftDrop, playHardDrop, playClear, playCombo, playLevelUp, playHold, playGameOver, startMusic, stopMusic };
+}
+
 function MiniGrid({shape, color, size=14, dimmed=false}) {
   if (!shape) return <div style={{width:size*4,height:size*2,minHeight:size*2}} />;
   return (
@@ -293,6 +499,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
   const labelId = useRef(0);
   const {init:initQueue, dequeue, peek} = useQueue();
+  const audio = useAudio();
+  const prevLevel = useRef(config.startLevel);
 
   // Refs for accessing latest state in callbacks
   const boardRef = useRef(board);
@@ -359,7 +567,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   useEffect(() => {
     if (countdown <= 0) return;
     const id = setTimeout(() => {
-      if (countdown === 1) { setCountdown(0); setStarted(true); }
+      if (countdown === 1) { setCountdown(0); setStarted(true); audio.startMusic(); }
       else setCountdown(c => c-1);
     }, 700);
     return () => clearTimeout(id);
@@ -409,10 +617,12 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     if (!started || gameOver || resultSentRef.current) return;
     if (challenge.goal === "lines" && target && lines >= target) {
       setResultSent(true);
+      audio.stopMusic();
       setTimeout(() => onResult(true, score, lines, level, elapsed, maxComboRef.current, totalB2bRef.current), 500);
     }
     if (challenge.goal === "score" && target && score >= target) {
       setResultSent(true);
+      audio.stopMusic();
       setTimeout(() => onResult(true, score, lines, level, elapsed, maxComboRef.current, totalB2bRef.current), 500);
     }
   }, [score, lines, started, gameOver, challenge, target, level, elapsed, onResult]);
@@ -426,6 +636,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     const sc = Math.floor((COLS - p.shape[0].length) / 2);
     if (collides(boardRef.current, p.shape, 0, sc)) {
       setGameOver(true);
+      audio.playGameOver();
+      audio.stopMusic();
       if (!resultSentRef.current) {
         setResultSent(true);
         const won = challenge.goal === "none";
@@ -473,13 +685,18 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       if (isB2b) addLabel("BACK-TO-BACK", "#a0f0ff", 48);
       if (cleared === 4) { setShake(true); setTimeout(() => setShake(false), 300); }
 
+      audio.playClear(cleared);
+      if (newCombo > 1) audio.playCombo(newCombo);
+
       setTimeout(() => {
         setFlashRows([]);
         setBoard(nb);
         setScore(s => s + pts);
         setLines(l => {
           const nl = l + cleared;
-          if (challenge.goal !== "survive") setLevel(Math.max(config.startLevel, Math.min(Math.floor(nl/10), DROP_SPEEDS.length-1)));
+          const newLvl = Math.max(config.startLevel, Math.min(Math.floor(nl/10), DROP_SPEEDS.length-1));
+          if (challenge.goal !== "survive") setLevel(newLvl);
+          if (newLvl > prevLevel.current) { audio.playLevelUp(); prevLevel.current = newLvl; }
           return nl;
         });
         spawnNext();
@@ -489,9 +706,10 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       setCombo(0);
       setLastWasTetris(false);
       setBoard(nb);
+      audio.playSoftDrop();
       spawnNext();
     }
-  }, [spawnNext, config.startLevel, challenge.goal, addLabel, clearLockTimer]);
+  }, [spawnNext, config.startLevel, challenge.goal, addLabel, clearLockTimer, audio]);
 
   // Keep doLockRef in sync so startLockTimer always calls the latest version
   useEffect(() => { doLockRef.current = doLock; }, [doLock]);
@@ -535,16 +753,18 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     while (!collides(boardRef.current, c.shape, nr+1, p.c)) nr++;
     setScore(s => s + (nr - p.r) * 2);
     setPos({r:nr, c:p.c});
+    audio.playHardDrop();
     setTimeout(() => doLock(), 0);
-  }, [doLock, clearLockTimer]);
+  }, [doLock, clearLockTimer, audio]);
 
   const move = useCallback((dc) => {
     if (!currentRef.current || pausedRef.current) return;
     if (!collides(boardRef.current, currentRef.current.shape, posRef.current.r, posRef.current.c + dc)) {
       setPos(prev => ({...prev, c: prev.c + dc}));
       touchLock();
+      audio.playMove();
     }
-  }, [touchLock]);
+  }, [touchLock, audio]);
 
   const rotatePiece = useCallback(() => {
     if (!currentRef.current || pausedRef.current) return;
@@ -555,10 +775,11 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         setCurrent({...c, shape:rotated});
         setPos(prev => ({...prev, c: prev.c+kick}));
         touchLock();
+        audio.playRotate();
         return;
       }
     }
-  }, [touchLock]);
+  }, [touchLock, audio]);
 
   const holdPiece = useCallback(() => {
     if (!currentRef.current || pausedRef.current || holdUsedRef.current) return;
@@ -576,7 +797,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       spawnNext();
     }
     setHoldUsed(true);
-  }, [holdKey, spawnNext, clearLockTimer]);
+    audio.playHold();
+  }, [holdKey, spawnNext, clearLockTimer, audio]);
 
   // DAS
   const stopDas = useCallback(() => {
