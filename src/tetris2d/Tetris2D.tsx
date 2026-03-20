@@ -401,9 +401,9 @@ function MiniGrid({shape, color, size=14, dimmed=false}) {
   return (
     <div style={{display:"grid",gridTemplateColumns:`repeat(${shape[0].length},${size}px)`,gap:1,opacity:dimmed?0.3:1,transition:"opacity 0.2s"}}>
       {shape.flat().map((v,i) => (
-        <div key={i} style={{width:size,height:size,borderRadius:size*0.25,
-          background:v?`linear-gradient(145deg, ${color}ee, ${color}88)`:"transparent",
-          boxShadow:v?`inset 0 ${size*0.15}px ${size*0.3}px rgba(255,255,255,0.4), inset 0 -${size*0.1}px ${size*0.2}px rgba(0,0,0,0.3), 0 0 ${size*0.4}px ${color}66`:"none"}} />
+        <div key={i} style={{width:size,height:size,borderRadius:size*0.3,
+          background:v?`linear-gradient(135deg, ${color}40 0%, ${color}cc 40%, ${color}ee 60%, ${color}aa 100%)`:"transparent",
+          boxShadow:v?`inset 0 ${size*0.2}px ${size*0.3}px rgba(255,255,255,0.45), inset 0 -${size*0.1}px ${size*0.2}px rgba(0,0,0,0.25), 0 0 ${size*0.4}px ${color}44`:"none"}} />
       ))}
     </div>
   );
@@ -1106,24 +1106,23 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
           const isGhost = cell && cell.length > 7;
           const baseColor = isGhost ? cell?.slice(0,7) : cell;
           return (
-            <div key={i} style={{
-              width:CELL, height:CELL, borderRadius: cell ? (isZen ? 8 : 6) : 3,
+            <div key={i} className={cell && !isGhost && !isFlash ? "jelly-block" : ""} style={{
+              width:CELL, height:CELL,
+              borderRadius: cell ? (isZen ? CELL*0.35 : CELL*0.28) : 3,
               background: isFlash ? "#fff"
                 : cell && !isGhost
-                  ? `linear-gradient(145deg, ${baseColor}ee, ${baseColor}99)`
+                  ? `linear-gradient(135deg, ${baseColor}40 0%, ${baseColor}cc 40%, ${baseColor}ee 60%, ${baseColor}aa 100%)`
                 : isGhost
                   ? `linear-gradient(145deg, ${baseColor}20, ${baseColor}10)`
                 : (r+(i%COLS))%2===0 ? "#12142200" : "#1618260a",
               boxShadow: cell && !isGhost
-                ? isZen
-                  ? `inset 0 4px 8px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.2), 0 0 12px ${baseColor}44, 0 2px 6px rgba(0,0,0,0.3)`
-                  : `inset 0 4px 6px rgba(255,255,255,0.35), inset 0 -3px 5px rgba(0,0,0,0.3), 0 0 8px ${baseColor}55, 0 2px 4px rgba(0,0,0,0.4)`
+                ? `inset 0 ${CELL*0.2}px ${CELL*0.3}px rgba(255,255,255,0.45), inset 0 -${CELL*0.12}px ${CELL*0.2}px rgba(0,0,0,0.25), inset ${CELL*0.08}px 0 ${CELL*0.15}px rgba(255,255,255,0.1), 0 0 ${CELL*0.4}px ${baseColor}44, 0 ${CELL*0.08}px ${CELL*0.15}px rgba(0,0,0,0.35)`
                 : isGhost ? `inset 0 2px 4px ${baseColor}15` : "none",
-              transition: isFlash ? "none" : "background 0.06s, transform 0.15s",
+              transition: isFlash ? "none" : "background 0.06s, transform 0.12s ease-out",
               animation: isFlash ? "flashRow 0.2s ease-out"
-                : cell && !isGhost ? "jelloIdle 3s ease-in-out infinite" : "none",
-              animationDelay: cell && !isGhost ? `${(i * 0.1) % 2}s` : "0s",
-              border: cell && !isGhost ? `1px solid ${baseColor}44` : "none",
+                : cell && !isGhost ? `jelloBreath ${2.5 + (i % 5) * 0.3}s ease-in-out infinite` : "none",
+              animationDelay: cell && !isGhost ? `${(i * 0.13) % 2.5}s` : "0s",
+              border: cell && !isGhost ? `1px solid ${baseColor}33` : "none",
             }} />
           );
         })}
@@ -1186,8 +1185,11 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes urgentPulse{0%,100%{color:#f04040}50%{color:#f0404055}}
         @keyframes labelFloat{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}60%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(1.15)}}
         @keyframes boardShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
-        @keyframes jelloLand{0%{transform:scaleY(0.7) scaleX(1.15)}30%{transform:scaleY(1.12) scaleX(0.92)}50%{transform:scaleY(0.95) scaleX(1.04)}70%{transform:scaleY(1.03) scaleX(0.98)}100%{transform:scaleY(1) scaleX(1)}}
-        @keyframes jelloIdle{0%,100%{transform:scaleY(1) scaleX(1)}50%{transform:scaleY(1.015) scaleX(0.99)}}
+        @keyframes jelloLand{0%{transform:scaleY(0.65) scaleX(1.2)}20%{transform:scaleY(1.15) scaleX(0.88)}35%{transform:scaleY(0.92) scaleX(1.06)}50%{transform:scaleY(1.05) scaleX(0.96)}65%{transform:scaleY(0.98) scaleX(1.02)}80%{transform:scaleY(1.01) scaleX(0.99)}100%{transform:scaleY(1) scaleX(1)}}
+        @keyframes jelloBreath{0%,100%{transform:scaleY(1) scaleX(1) rotate(0deg)}25%{transform:scaleY(1.03) scaleX(0.97) rotate(0.3deg)}50%{transform:scaleY(0.97) scaleX(1.03) rotate(-0.3deg)}75%{transform:scaleY(1.02) scaleX(0.98) rotate(0.2deg)}}
+        .jelly-block{cursor:pointer}
+        .jelly-block:hover{transform:scale(1.08)!important;filter:brightness(1.15);z-index:2}
+        .jelly-block:active{transform:scaleY(0.8) scaleX(1.15)!important;filter:brightness(1.2);z-index:2}
         @keyframes zenFloat{0%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-40px) scale(1.3);opacity:0.6}100%{transform:translateY(0) scale(1);opacity:0.3}}
         @keyframes zenBoardGlow{0%,100%{box-shadow:0 0 20px rgba(100,150,200,0.15),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 40px rgba(100,150,200,0.3),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}}
         .menu-btn:hover{color:#888!important;border-color:#333!important}
