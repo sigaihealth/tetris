@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { useEffect, useRef, useCallback } from 'react';
-import * as Matter from 'matter-js';
+import MatterModule from 'matter-js/build/matter.js';
 
+const Matter = MatterModule.default || MatterModule;
 const { Engine, Bodies, Body, Composite } = Matter;
 
 /* ────────────────────────────────────────────────────────
