@@ -1,7 +1,10 @@
 export type WellSize = 'small' | 'medium' | 'large';
 
+export type GameMode = '3d' | '2d';
+
 export interface MenuCallbacks {
   onStart: (size: WellSize) => void;
+  onStart2D: () => void;
   onResume: () => void;
   onRestart: () => void;
   onQuit: () => void;
@@ -71,6 +74,7 @@ export class MenuScreen {
   private content: HTMLElement;
   private callbacks: MenuCallbacks;
   private selectedSize: WellSize = 'medium';
+  private selectedMode: GameMode = '3d';
   private nameInputEl: HTMLInputElement | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
@@ -95,7 +99,18 @@ export class MenuScreen {
     title.appendChild(span3d);
     this.content.appendChild(title);
 
-    // Well size selector
+    // Game mode selector
+    const modeSection = el('div', 'menu-section');
+    modeSection.appendChild(el('div', 'menu-label', 'GAME MODE'));
+    const modeRow = el('div', 'size-selector');
+    const modeBtns: HTMLElement[] = [];
+
+    const modes: { mode: GameMode; label: string }[] = [
+      { mode: '2d', label: '2D CLASSIC' },
+      { mode: '3d', label: '3D' },
+    ];
+
+    // Well size selector (built ahead so we can show/hide)
     const sizeSection = el('div', 'menu-section');
     sizeSection.appendChild(el('div', 'menu-label', 'WELL SIZE'));
     const sizeRow = el('div', 'size-selector');
@@ -119,7 +134,32 @@ export class MenuScreen {
       sizeRow.appendChild(sBtn);
     }
     sizeSection.appendChild(sizeRow);
+
+    const updateSizeVisibility = (): void => {
+      sizeSection.style.display = this.selectedMode === '3d' ? '' : 'none';
+    };
+
+    for (const m of modes) {
+      const mBtn = el('button', 'size-btn');
+      mBtn.textContent = m.label;
+      if (m.mode === this.selectedMode) {
+        mBtn.classList.add('selected');
+      }
+      mBtn.addEventListener('click', () => {
+        this.selectedMode = m.mode;
+        for (const b of modeBtns) b.classList.remove('selected');
+        mBtn.classList.add('selected');
+        updateSizeVisibility();
+      });
+      modeBtns.push(mBtn);
+      modeRow.appendChild(mBtn);
+    }
+    modeSection.appendChild(modeRow);
+    this.content.appendChild(modeSection);
+
+    // Append well size section (visibility managed by mode)
     this.content.appendChild(sizeSection);
+    updateSizeVisibility();
 
     // SFX volume
     const sfxSection = el('div', 'menu-section');
@@ -134,10 +174,16 @@ export class MenuScreen {
     this.content.appendChild(musicSection);
 
     // Start button
+    const startAction = (): void => {
+      if (this.selectedMode === '2d') {
+        this.callbacks.onStart2D();
+      } else {
+        this.callbacks.onStart(this.selectedSize);
+      }
+    };
+
     this.content.appendChild(
-      btn('menu-btn primary', 'START GAME', () =>
-        this.callbacks.onStart(this.selectedSize),
-      ),
+      btn('menu-btn primary', 'START GAME', startAction),
     );
 
     // Controls reference
@@ -154,7 +200,7 @@ export class MenuScreen {
     // Enter key listener
     this.keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
-        this.callbacks.onStart(this.selectedSize);
+        startAction();
       }
     };
     window.addEventListener('keydown', this.keyHandler);

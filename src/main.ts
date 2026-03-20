@@ -1,5 +1,10 @@
 import './styles.css';
 
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
+import Tetris2D from './tetris2d/Tetris2D.js';
+
 import { GameState, WELL_PRESETS } from './game/GameState.js';
 import type { GameEvent, Axis } from './game/GameState.js';
 import { InputHandler } from './game/Input.js';
@@ -16,7 +21,7 @@ import { MenuScreen } from './ui/MenuScreen.js';
 import type { WellSize } from './ui/MenuScreen.js';
 import { Leaderboard } from './ui/Leaderboard.js';
 
-type AppState = 'menu' | 'playing' | 'paused' | 'gameover';
+type AppState = 'menu' | 'playing' | 'paused' | 'gameover' | 'playing2d';
 
 class App {
   private state: AppState = 'menu';
@@ -38,15 +43,26 @@ class App {
   private leaderboard: Leaderboard | null = null;
   private currentSize: WellSize = 'medium';
 
+  // 2D mode
+  private canvas: HTMLCanvasElement;
+  private tetris2dRoot: HTMLElement;
+  private reactRoot: Root | null = null;
+
   // Timing
   private lastTime = 0;
   private gravityAccum = 0;
 
   constructor() {
-    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    this.canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+
+    // Create 2D container
+    this.tetris2dRoot = document.createElement('div');
+    this.tetris2dRoot.id = 'tetris-2d-root';
+    this.tetris2dRoot.style.display = 'none';
+    document.body.appendChild(this.tetris2dRoot);
 
     // Renderer
-    this.sceneManager = new SceneManager(canvas);
+    this.sceneManager = new SceneManager(this.canvas);
     this.effects = new Effects(this.sceneManager.scene);
 
     // Audio
@@ -60,6 +76,7 @@ class App {
 
     this.menu = new MenuScreen({
       onStart: (size: WellSize) => this.startGame(size),
+      onStart2D: () => this.start2D(),
       onResume: () => this.unpause(),
       onRestart: () => this.startGame(this.currentSize),
       onQuit: () => this.quitToMenu(),
@@ -119,8 +136,45 @@ class App {
     this.state = 'playing';
   }
 
+  private start2D(): void {
+    this.state = 'playing2d';
+    this.menu.hide();
+    this.hud.hide();
+
+    // Hide the Three.js canvas
+    this.canvas.style.display = 'none';
+
+    // Show the 2D container and mount React
+    this.tetris2dRoot.style.display = '';
+    this.reactRoot = createRoot(this.tetris2dRoot);
+    this.reactRoot.render(createElement(Tetris2D));
+  }
+
+  private quit2D(): void {
+    // Unmount React
+    if (this.reactRoot) {
+      this.reactRoot.unmount();
+      this.reactRoot = null;
+    }
+
+    // Hide 2D, show 3D canvas
+    this.tetris2dRoot.style.display = 'none';
+    this.canvas.style.display = '';
+
+    this.state = 'menu';
+    this.menu.showStartScreen();
+  }
+
   private onKeyDown(e: KeyboardEvent): void {
     if (e.repeat) return;
+
+    // In 2D mode, only handle Escape to quit back to main menu
+    if (this.state === 'playing2d') {
+      if (e.key === 'Escape') {
+        this.quit2D();
+      }
+      return;
+    }
 
     const action = this.input.getAction(e.code);
 
