@@ -85,12 +85,13 @@ function createBag() {
 
 function createPiece(type: string, x: number, y: number, cellSize: number) {
   const def = PIECE_DEFS[type as keyof typeof PIECE_DEFS];
+  const collisionSize = cellSize * 0.88; // slightly smaller than grid cell for easier fitting
   const parts = def.cells.map(([cx, cy]) =>
     Bodies.rectangle(
       x + cx * cellSize + cellSize / 2,
       y + cy * cellSize + cellSize / 2,
-      cellSize * 0.92,
-      cellSize * 0.92,
+      collisionSize,
+      collisionSize,
       { render: { fillStyle: def.color } },
     ),
   );
@@ -308,9 +309,48 @@ export default function PhysicsTetris() {
         return;
       }
 
-      // Snap to nearest 90-degree angle before locking for clean stacking
+      // 1. Snap angle to nearest 90 degrees
       const lockAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2);
       Body.setAngle(activePiece, lockAngle);
+
+      // 2. Snap position to grid — align to nearest cell boundary
+      //    This ensures pieces stack cleanly and gaps don't appear
+      const pos = activePiece.position;
+      const gridX = Math.round((pos.x - offsetX) / cellSize) * cellSize + offsetX;
+      const gridY = Math.round((pos.y - offsetY) / cellSize) * cellSize + offsetY;
+      Body.setPosition(activePiece, { x: gridX, y: gridY });
+
+      // 3. After snapping, check for overlap with existing pieces and nudge if needed
+      //    Push the piece upward until it doesn't overlap settled bodies
+      let pushAttempts = 0;
+      while (pushAttempts < 10) {
+        let overlapping = false;
+        for (const settled of settledBodies) {
+          if (Matter.SAT && Matter.SAT.collides) {
+            // Use SAT if available
+            for (const partA of activePiece.parts) {
+              for (const partB of settled.parts) {
+                if (partA === activePiece || partB === settled) continue;
+                const col = Matter.SAT.collides(partA, partB);
+                if (col && col.collided) { overlapping = true; break; }
+              }
+              if (overlapping) break;
+            }
+          } else {
+            // Fallback: AABB overlap check
+            const a = activePiece.bounds, b = settled.bounds;
+            if (a.min.x < b.max.x && a.max.x > b.min.x && a.min.y < b.max.y && a.max.y > b.min.y) {
+              overlapping = true;
+            }
+          }
+          if (overlapping) break;
+        }
+        if (!overlapping) break;
+        // Nudge up by 1 cell
+        Body.setPosition(activePiece, { x: activePiece.position.x, y: activePiece.position.y - cellSize });
+        pushAttempts++;
+      }
+
       Body.setVelocity(activePiece, { x: 0, y: 0 });
       Body.setAngularVelocity(activePiece, 0);
       Body.setStatic(activePiece, true);
@@ -352,12 +392,20 @@ export default function PhysicsTetris() {
         }
 
         // Angular damping — strongly resist spinning so pieces stay flat
-        Body.setAngularVelocity(activePiece, activePiece.angularVelocity * 0.85);
+        Body.setAngularVelocity(activePiece, activePiece.angularVelocity * 0.82);
 
-        // Gentle angle correction — nudge toward nearest 90-degree alignment
+        // Angle correction — nudge toward nearest 90-degree alignment
         const snapAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2);
         const angleDiff = snapAngle - activePiece.angle;
-        Body.setAngularVelocity(activePiece, activePiece.angularVelocity + angleDiff * 0.04);
+        Body.setAngularVelocity(activePiece, activePiece.angularVelocity + angleDiff * 0.06);
+
+        // Horizontal grid-snap guidance — gently nudge piece toward nearest column
+        // This makes pieces naturally align to the grid without feeling forced
+        const nearestGridX = Math.round((activePiece.position.x - offsetX) / cellSize) * cellSize + offsetX;
+        const xDiff = nearestGridX - activePiece.position.x;
+        if (Math.abs(xDiff) > 1) {
+          Body.applyForce(activePiece, activePiece.position, { x: xDiff * 0.0003 * (activePiece.mass || 1), y: 0 });
+        }
       }
 
       // Step physics (fixed timestep)
