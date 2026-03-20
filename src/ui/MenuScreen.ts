@@ -19,7 +19,7 @@ const WELL_CONFIGS: { size: WellSize; label: string; dim: string }[] = [
   { size: 'large', label: 'Large', dim: '6×6×15' },
 ];
 
-const CONTROLS: [string, string][] = [
+const CONTROLS_3D_DESKTOP: [string, string][] = [
   ['WASD / Arrows', 'Move piece'],
   ['I / K', 'Rotate X'],
   ['J / L', 'Rotate Y'],
@@ -29,6 +29,32 @@ const CONTROLS: [string, string][] = [
   ['Q / E', 'Orbit camera'],
   ['Esc', 'Pause'],
   ['M', 'Mute'],
+];
+
+const CONTROLS_3D_MOBILE: [string, string][] = [
+  ['Swipe L/R', 'Move piece'],
+  ['Swipe Down', 'Hard drop'],
+  ['Tap', 'Rotate'],
+  ['Q / E', 'Orbit camera'],
+];
+
+const CONTROLS_2D_DESKTOP: [string, string][] = [
+  ['Arrows / WASD', 'Move piece'],
+  ['Up / W', 'Rotate'],
+  ['Space', 'Hard drop'],
+  ['Shift / Down', 'Soft drop'],
+  ['C', 'Hold piece'],
+  ['P / Esc', 'Pause'],
+  ['M', 'Mute'],
+];
+
+const CONTROLS_2D_MOBILE: [string, string][] = [
+  ['Touch buttons', 'Move & rotate'],
+  ['DROP button', 'Hard drop'],
+  ['HOLD button', 'Hold piece'],
+  ['Swipe L/R', 'Move piece'],
+  ['Swipe Down', 'Hard drop'],
+  ['Tap', 'Rotate'],
 ];
 
 function el(tag: string, className?: string, text?: string): HTMLElement {
@@ -136,8 +162,28 @@ export class MenuScreen {
     }
     sizeSection.appendChild(sizeRow);
 
+    // Controls reference (dynamic based on mode and device)
+    const ctrlSection = el('div', 'controls-ref');
+    const isMobile = window.innerWidth < 600;
+    const buildControlsGrid = (): void => {
+      ctrlSection.replaceChildren();
+      const deviceLabel = isMobile ? 'TOUCH' : 'KEYBOARD';
+      const modeLabel = this.selectedMode === '3d' ? '3D' : '2D';
+      ctrlSection.appendChild(el('div', 'menu-label', `CONTROLS \u2014 ${modeLabel} ${deviceLabel}`));
+      const controls = this.selectedMode === '3d'
+        ? (isMobile ? CONTROLS_3D_MOBILE : CONTROLS_3D_DESKTOP)
+        : (isMobile ? CONTROLS_2D_MOBILE : CONTROLS_2D_DESKTOP);
+      const grid = el('div', 'controls-grid');
+      for (const [key, action] of controls) {
+        grid.appendChild(el('span', undefined, key));
+        grid.appendChild(el('span', undefined, action));
+      }
+      ctrlSection.appendChild(grid);
+    };
+
     const updateSizeVisibility = (): void => {
       sizeSection.style.display = this.selectedMode === '3d' ? '' : 'none';
+      buildControlsGrid();
     };
 
     for (const m of modes) {
@@ -199,15 +245,7 @@ export class MenuScreen {
       btn('menu-btn', 'MULTIPLAYER', () => this.callbacks.onMultiplayer()),
     );
 
-    // Controls reference
-    const ctrlSection = el('div', 'controls-ref');
-    ctrlSection.appendChild(el('div', 'menu-label', 'CONTROLS'));
-    const grid = el('div', 'controls-grid');
-    for (const [key, action] of CONTROLS) {
-      grid.appendChild(el('span', undefined, key));
-      grid.appendChild(el('span', undefined, action));
-    }
-    ctrlSection.appendChild(grid);
+    // Append controls section (content managed by buildControlsGrid via updateSizeVisibility)
     this.content.appendChild(ctrlSection);
 
     // Enter key listener

@@ -543,8 +543,10 @@ function MenuScreen({onStart}) {
         border:"2px solid #00f0f0",borderRadius:8,background:"#00f0f012",color:"#00f0f0",cursor:"pointer",
         boxShadow:"0 0 24px #00f0f018",transition:"all 0.2s",animation:"slideUp 0.5s ease-out",
       }}>PLAY</button>
-      <div style={{fontSize:10,marginTop:20,color:"#2a2a2a",textAlign:"center",lineHeight:1.9}}>
-        Arrows: move/rotate &middot; Space: hard drop &middot; C/Shift: hold &middot; P: pause
+      <div style={{fontSize:10,marginTop:20,color:"#556",textAlign:"center",lineHeight:1.9}}>
+        {window.innerWidth < 600
+          ? "Tap: rotate \u00B7 Swipe: move/drop \u00B7 Touch buttons below board"
+          : "Arrows: move/rotate \u00B7 Space: hard drop \u00B7 C/Shift: hold \u00B7 P: pause"}
       </div>
     </div>
   );
