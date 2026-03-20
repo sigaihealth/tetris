@@ -85,7 +85,7 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
   }, [alias, peerManager]);
 
   const handleJoin = useCallback(async (codeOverride?: string) => {
-    const code = codeOverride ?? roomCode;
+    const code = (codeOverride ?? roomCode).trim().toUpperCase();
     if (!code || code.length < 4) {
       setError('Enter a valid room code');
       return;
@@ -106,6 +106,22 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
     navigator.clipboard.writeText(link).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      // Fallback: select the invite link text for manual copy
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = link;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        setError('Failed to copy link — please copy it manually');
+      }
     });
   }, [displayCode]);
 

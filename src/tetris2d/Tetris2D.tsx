@@ -366,7 +366,13 @@ function MenuScreen({onStart}) {
         @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
         .chal-btn:hover{border-color:#00f0f066!important;color:#00f0f0aa!important}
         .diff-btn:hover{opacity:0.85} .play-btn:hover{background:#00f0f025!important;box-shadow:0 0 32px #00f0f033!important}
+        .back-btn:hover{border-color:#444!important;color:#888!important}
       `}</style>
+      <button className="back-btn" onClick={() => window.dispatchEvent(new CustomEvent('tetris2d-exit'))} style={{
+        position:"absolute",top:20,left:20,fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:2,
+        padding:"6px 12px",border:"1px solid #1a1a2e",borderRadius:4,
+        background:"transparent",color:"#333",cursor:"pointer",transition:"all 0.2s",
+      }}>{'<'} MAIN MENU</button>
       <h1 style={{fontFamily:"'Orbitron'",fontSize:34,fontWeight:900,letterSpacing:10,color:"#00f0f0",marginBottom:4,
         textShadow:"0 0 20px #00f0f088,0 0 40px #00f0f044",animation:"glowPulse 3s ease-in-out infinite"}}>TETRIS</h1>
       <div style={{fontFamily:"'Orbitron'",fontSize:10,letterSpacing:6,color:"#333",marginBottom:32}}>SELECT CHALLENGE</div>
@@ -999,9 +1005,15 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         </div>
       )}
       {paused && (
-        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000000bb",borderRadius:6,zIndex:10}}>
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000000bb",borderRadius:6,zIndex:10}}>
           <div style={{fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,color:"#f0f000",
             animation:"pulse 1.5s ease-in-out infinite",textShadow:"0 0 20px #f0f00066"}}>PAUSED</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:10,color:"#888",marginTop:12,letterSpacing:1}}>Press P or ESC to resume</div>
+          <button onClick={() => window.dispatchEvent(new CustomEvent('tetris2d-exit'))} style={{
+            fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,letterSpacing:2,marginTop:20,
+            padding:"8px 20px",border:"1px solid #f0f00066",borderRadius:6,
+            background:"transparent",color:"#f0f000",cursor:"pointer",transition:"all 0.2s",
+          }}>MENU</button>
         </div>
       )}
     </div>

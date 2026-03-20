@@ -6,6 +6,7 @@ import type { Root } from 'react-dom/client';
 import Tetris2D from './tetris2d/Tetris2D.js';
 import MultiplayerLobby from './multiplayer/MultiplayerLobby.js';
 import MultiplayerGame from './multiplayer/MultiplayerGame.js';
+import { ErrorBoundary } from './multiplayer/ErrorBoundary.js';
 import { PeerManager } from './multiplayer/PeerManager.js';
 
 import { GameState, WELL_PRESETS } from './game/GameState.js';
@@ -121,6 +122,18 @@ class App {
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => this.onKeyUp(e));
 
+    // Browser back/close protection during gameplay
+    window.addEventListener('beforeunload', (e) => {
+      if (this.state !== 'menu') {
+        e.preventDefault();
+      }
+    });
+
+    // Listen for 2D mode exit event
+    window.addEventListener('tetris2d-exit', () => {
+      if (this.state === 'playing2d') this.quit2D();
+    });
+
     // Start render loop
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.loop(t));
@@ -176,7 +189,7 @@ class App {
     // Show the 2D container and mount React
     this.tetris2dRoot.style.display = '';
     this.reactRoot = createRoot(this.tetris2dRoot);
-    this.reactRoot.render(createElement(Tetris2D));
+    this.reactRoot.render(createElement(ErrorBoundary, null, createElement(Tetris2D)));
   }
 
   private quit2D(): void {
@@ -211,21 +224,25 @@ class App {
 
   private renderMultiplayerLobby(roomCode?: string): void {
     this.multiplayerReactRoot?.render(
-      createElement(MultiplayerLobby, {
-        peerManager: this.peerManager,
-        initialRoomCode: roomCode,
-        onGameStart: () => this.renderMultiplayerGame(),
-        onBack: () => this.quitMultiplayer(),
-      }),
+      createElement(ErrorBoundary, null,
+        createElement(MultiplayerLobby, {
+          peerManager: this.peerManager,
+          initialRoomCode: roomCode,
+          onGameStart: () => this.renderMultiplayerGame(),
+          onBack: () => this.quitMultiplayer(),
+        }),
+      ),
     );
   }
 
   private renderMultiplayerGame(): void {
     this.multiplayerReactRoot?.render(
-      createElement(MultiplayerGame, {
-        peerManager: this.peerManager,
-        onBack: () => this.quitMultiplayer(),
-      }),
+      createElement(ErrorBoundary, null,
+        createElement(MultiplayerGame, {
+          peerManager: this.peerManager,
+          onBack: () => this.quitMultiplayer(),
+        }),
+      ),
     );
   }
 

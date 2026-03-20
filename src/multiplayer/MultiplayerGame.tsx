@@ -855,7 +855,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
         marginBottom: 16,
         animation: matchResult === 'win' ? 'glowPulseGreen 2s ease-in-out infinite' : 'glowPulseRed 2s ease-in-out infinite',
       }}>
-        {matchResult === 'win' ? 'YOU WIN!' : 'YOU LOSE'}
+        {matchResult === 'win' ? (disconnected ? 'OPPONENT LEFT' : 'YOU WIN!') : 'YOU LOSE'}
       </div>
       <div style={{
         fontFamily:"'Orbitron'", fontSize:11, color:'#555', letterSpacing:3, marginBottom:32,
