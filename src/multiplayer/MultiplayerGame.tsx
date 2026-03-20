@@ -282,6 +282,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
   const [flashRows, setFlashRows] = useState([]);
   const [started, setStarted] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [gameRound, setGameRound] = useState(0);
   const [holdKey, setHoldKey] = useState(null);
   const [holdUsed, setHoldUsed] = useState(false);
   const [previewKeys, setPreviewKeys] = useState([]);
@@ -381,6 +382,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
     setRematchReceived(false);
     garbageQueue.current = 0;
     prevLevel.current = 0;
+    setGameRound(r => r + 1);
     comboRef.current = 0;
     lastWasTetrisRef.current = false;
     maxComboRef.current = 0;
@@ -439,7 +441,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
 
   /* ---- Apply garbage rows ---- */
   const applyGarbage = useCallback((count) => {
-    if (count <= 0) return;
+    if (count <= 0 || matchResultRef.current) return;
     audio.playGarbage();
     setShake(true);
     setTimeout(() => setShake(false), 300);
@@ -512,7 +514,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
       else setCountdown(c => c-1);
     }, 700);
     return () => clearTimeout(id);
-  }, [countdown]);
+  }, [countdown, gameRound]);
 
   /* ---- Spawn first piece ---- */
   useEffect(() => {

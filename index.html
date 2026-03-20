@@ -2,10 +2,165 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TETRIS 3D</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <!-- Primary SEO -->
+    <title>Free Tetris Game Online - Play 2D Classic, 3D & Multiplayer | No Download</title>
+    <meta name="description" content="Play Tetris free online — classic 2D, immersive 3D glass mode, and real-time multiplayer with friends. No download, no sign-up. Challenge mode, leaderboards, ASMR sounds. Works on mobile and desktop." />
+    <meta name="keywords" content="tetris, free tetris, tetris online, play tetris, tetris game, 3d tetris, multiplayer tetris, tetris with friends, block puzzle game, classic tetris, tetris no download, free online games, browser tetris, mobile tetris" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="SigAI" />
+    <link rel="canonical" href="https://tetris.sig.ai/" />
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Free Tetris - Play Classic 2D, 3D & Multiplayer Online" />
+    <meta property="og:description" content="Play Tetris free in your browser. Classic 2D with jello blocks, stunning 3D glass mode, and real-time P2P multiplayer. No download needed." />
+    <meta property="og:url" content="https://tetris.sig.ai/" />
+    <meta property="og:site_name" content="Tetris 3D" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Free Tetris - 2D, 3D & Multiplayer Online" />
+    <meta name="twitter:description" content="Classic block puzzle game with 3D glass visuals, multiplayer, and ASMR audio. Play free in your browser." />
+
+    <!-- PWA / Mobile -->
+    <meta name="theme-color" content="#354060" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tetris 3D" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Structured Data / Schema.org for AEO/GEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Tetris 3D - Free Online Tetris",
+      "description": "Play Tetris free online with three exciting modes: Classic 2D with jello-style animated blocks, immersive 3D glass block mode, and real-time peer-to-peer multiplayer with friends. Features ASMR procedural audio, touch controls for mobile, challenge modes, and leaderboards.",
+      "url": "https://tetris.sig.ai/",
+      "genre": ["Puzzle", "Strategy", "Arcade"],
+      "gamePlatform": ["Web Browser", "Mobile Browser"],
+      "operatingSystem": "Any",
+      "applicationCategory": "Game",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "gameItem": [
+        {
+          "@type": "Thing",
+          "name": "2D Classic Mode",
+          "description": "Classic Tetris with animated jello-style blocks, challenge modes (Sprint, Score Attack, Survival, Freeplay), ASMR sound effects, and mobile touch controls"
+        },
+        {
+          "@type": "Thing",
+          "name": "3D Glass Mode",
+          "description": "True 3D Tetris with glass/translucent blocks falling into a volumetric well. Rotate camera, fill horizontal planes, polycube pieces with 3-axis rotation"
+        },
+        {
+          "@type": "Thing",
+          "name": "Multiplayer Mode",
+          "description": "Real-time peer-to-peer competitive Tetris. Create rooms, invite friends via link, play head-to-head with garbage rows. Anonymous with optional aliases"
+        }
+      ],
+      "numberOfPlayers": {
+        "@type": "QuantitativeValue",
+        "minValue": 1,
+        "maxValue": 2
+      },
+      "playMode": ["SinglePlayer", "MultiPlayer"],
+      "author": {
+        "@type": "Organization",
+        "name": "SigAI",
+        "url": "https://sig.ai"
+      }
+    }
+    </script>
+
+    <!-- FAQ Schema for AEO (AI Engine Optimization) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is this Tetris game free to play?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, completely free. No download, no sign-up, no ads. Play instantly in your browser on any device."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I play Tetris with friends online?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! Create a multiplayer room, share the invite link with a friend, and play head-to-head in real-time. Clearing lines sends garbage rows to your opponent. No account needed — play anonymously or choose an alias."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does this Tetris work on mobile phones?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, fully mobile responsive with on-screen touch controls. Swipe to move pieces, tap to rotate, and use the large touch buttons for all actions. Works on iPhone, Android, and tablets."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is 3D Tetris?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "3D Tetris uses polycube pieces (3D blocks) that fall into a volumetric well. Instead of clearing lines, you fill horizontal planes. You can rotate the camera to see all sides of the well and rotate pieces on all three axes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What game modes are available?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Three main modes: 2D Classic (with Sprint, Score Attack, Survival, and Freeplay challenges at 4 difficulty levels), 3D Glass Mode (with small, medium, and large well sizes), and Multiplayer (real-time 1v1 with friends via invite links)."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
   <body>
+    <!-- Noscript fallback for SEO crawlers -->
+    <noscript>
+      <div style="padding:40px;text-align:center;font-family:sans-serif;background:#354060;color:#e0e0f0;min-height:100vh">
+        <h1>Free Tetris Game Online</h1>
+        <h2>Play Classic 2D, 3D Glass & Multiplayer</h2>
+        <p>Play Tetris free in your browser — no download, no sign-up needed.</p>
+        <h3>Game Modes</h3>
+        <ul style="text-align:left;max-width:600px;margin:20px auto">
+          <li><strong>2D Classic</strong> — Animated jello blocks, challenge modes (Sprint 20, Sprint 40, Score Attack, Survival, Freeplay), 4 difficulty levels, ASMR sound effects, mobile touch controls</li>
+          <li><strong>3D Glass Mode</strong> — True 3D Tetris with translucent glass blocks, camera orbit, polycube pieces, 3-axis rotation, configurable well sizes</li>
+          <li><strong>Multiplayer</strong> — Real-time 1v1 competitive Tetris with friends. Create rooms, share invite links, send garbage rows. Anonymous play with optional aliases</li>
+        </ul>
+        <h3>Features</h3>
+        <ul style="text-align:left;max-width:600px;margin:20px auto">
+          <li>Free to play — no ads, no download, no account required</li>
+          <li>Works on desktop and mobile browsers</li>
+          <li>Procedural ASMR audio — satisfying sound effects and ambient music</li>
+          <li>Leaderboards and high score tracking</li>
+          <li>Keyboard and touch controls</li>
+          <li>Peer-to-peer multiplayer — no server needed, invite by link</li>
+        </ul>
+        <p>Please enable JavaScript to play the game.</p>
+      </div>
+    </noscript>
     <canvas id="game-canvas"></canvas>
     <script type="module" src="/src/main.ts"></script>
   </body>
