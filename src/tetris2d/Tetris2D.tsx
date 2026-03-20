@@ -12,24 +12,24 @@ const DAS_DELAY = 170;
 const DAS_RATE = 50;
 
 const PIECES = {
-  I:{shape:[[1,1,1,1]],color:"#40c8e0",key:"I"},   // Aqua glass
-  O:{shape:[[1,1],[1,1]],color:"#e8c840",key:"O"},  // Amber glass
-  T:{shape:[[0,1,0],[1,1,1]],color:"#b060d8",key:"T"}, // Violet glass
-  S:{shape:[[0,1,1],[1,1,0]],color:"#50c870",key:"S"}, // Mint glass
-  Z:{shape:[[1,1,0],[0,1,1]],color:"#e05068",key:"Z"}, // Rose glass
-  J:{shape:[[1,0,0],[1,1,1]],color:"#5088e0",key:"J"}, // Sapphire glass
-  L:{shape:[[0,0,1],[1,1,1]],color:"#e09040",key:"L"}, // Peach glass
+  I:{shape:[[1,1,1,1]],color:"#18d8f0",key:"I"},   // Electric cyan candy
+  O:{shape:[[1,1],[1,1]],color:"#f0d020",key:"O"},  // Juicy mango
+  T:{shape:[[0,1,0],[1,1,1]],color:"#c040f0",key:"T"}, // Grape candy
+  S:{shape:[[0,1,1],[1,1,0]],color:"#30e868",key:"S"}, // Lime jelly
+  Z:{shape:[[1,1,0],[0,1,1]],color:"#f03060",key:"Z"}, // Strawberry
+  J:{shape:[[1,0,0],[1,1,1]],color:"#3878f0",key:"J"}, // Blueberry candy
+  L:{shape:[[0,0,1],[1,1,1]],color:"#f08820",key:"L"}, // Orange candy
 };
 
-// Vibrant glass colors
+// Bold juicy candy colors — rich, saturated, tasty
 const JELLY_RGBA = {
-  "#40c8e0": "rgba(50, 200, 230, 0.75)",   // Aqua
-  "#e8c840": "rgba(240, 210, 40, 0.75)",   // Amber
-  "#b060d8": "rgba(180, 80, 230, 0.75)",   // Violet
-  "#50c870": "rgba(60, 210, 100, 0.75)",   // Mint
-  "#e05068": "rgba(230, 60, 90, 0.75)",    // Rose
-  "#5088e0": "rgba(60, 130, 240, 0.75)",   // Sapphire
-  "#e09040": "rgba(240, 150, 50, 0.75)",   // Peach
+  "#18d8f0": "rgba(24, 216, 240, 0.78)",   // Cyan candy
+  "#f0d020": "rgba(240, 208, 32, 0.78)",   // Mango
+  "#c040f0": "rgba(192, 64, 240, 0.78)",   // Grape
+  "#30e868": "rgba(48, 232, 104, 0.78)",   // Lime
+  "#f03060": "rgba(240, 48, 96, 0.78)",    // Strawberry
+  "#3878f0": "rgba(56, 120, 240, 0.78)",   // Blueberry
+  "#f08820": "rgba(240, 136, 32, 0.78)",   // Orange
   // Zen colors
   "#7ecfcf": "rgba(126, 207, 207, 0.65)",
   "#f0e68c": "rgba(240, 230, 140, 0.65)",
@@ -1224,22 +1224,28 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
                 position:"absolute", left:x, top:y, width:w, height:h,
                 borderRadius:`${tl}px ${tr}px ${br}px ${bl}px`,
                 background:jellyBg,
-                // Unified specular + depth gradient across entire piece
+                // Liquid glass: specular highlight + smooth depth + inner glow
                 backgroundImage:[
-                  `radial-gradient(ellipse at ${0.3*gW}px ${0.15*gH}px, rgba(255,255,255,0.55) 0%, transparent ${Math.max(gW,gH)*0.45}px)`,
-                  `linear-gradient(175deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 35%, transparent 55%, rgba(0,0,0,0.12) 100%)`,
+                  // Bright specular highlight — positioned on upper-left of whole piece
+                  `radial-gradient(ellipse at ${0.25*gW}px ${0.15*gH}px, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) ${Math.max(gW,gH)*0.25}px, transparent ${Math.max(gW,gH)*0.5}px)`,
+                  // Smooth top-to-bottom depth gradient
+                  `linear-gradient(175deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 25%, transparent 50%, rgba(0,0,0,0.06) 75%, rgba(0,0,0,0.15) 100%)`,
                 ].join(','),
                 backgroundSize:`${gW}px ${gH}px, ${gW}px ${gH}px`,
                 backgroundPosition:`${-offX}px ${-offY}px, ${-offX}px ${-offY}px`,
                 boxShadow:[
-                  // 3D edge lighting — only on exposed outer edges
-                  !up?`inset 0 2px 1px rgba(255,255,255,0.6)`:'',
-                  !dn?`inset 0 -2px 1px rgba(0,0,0,0.18)`:'',
-                  !lt?`inset 2px 0 1px rgba(255,255,255,0.3)`:'',
-                  !rt?`inset -2px 0 1px rgba(0,0,0,0.1)`:'',
-                  // Outer 3D shadow + glow
-                  `0 3px 10px rgba(0,0,0,0.3)`,
-                  `0 0 16px ${cell}25`,
+                  // Smooth inner glow on outer edges — liquid glass bevel
+                  !up?`inset 0 3px 4px rgba(255,255,255,0.55)`:'',
+                  !dn?`inset 0 -2px 4px rgba(0,0,0,0.2)`:'',
+                  !lt?`inset 3px 0 4px rgba(255,255,255,0.25)`:'',
+                  !rt?`inset -2px 0 3px rgba(0,0,0,0.12)`:'',
+                  // Soft inner color glow — makes it feel lit from inside
+                  `inset 0 0 ${CELL*0.5}px ${cell}30`,
+                  // Outer shadow for 3D lift
+                  `0 4px 12px rgba(0,0,0,0.35)`,
+                  // Color glow halo
+                  `0 0 20px ${cell}28`,
+                  `0 2px 4px rgba(0,0,0,0.2)`,
                 ].filter(Boolean).join(','),
                 animation: isLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+((r*COLS+c)%5)*0.25}s ease-in-out infinite`,
                 animationDelay: isLanding ? "0s" : `${((r*COLS+c)*0.11)%2.5}s`,
