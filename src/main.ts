@@ -124,6 +124,11 @@ class App {
 
     const action = this.input.getAction(e.code);
 
+    // Prevent browser defaults for game keys (space scrolls, arrows scroll)
+    if (action) {
+      e.preventDefault();
+    }
+
     if (action === 'mute') {
       this.audioEngine.toggleMute();
       return;
@@ -284,6 +289,7 @@ class App {
   private showGameOver(): void {
     if (!this.game || !this.leaderboard) return;
 
+    this.hud.hide();
     const score = this.game.score;
     const level = this.game.level;
     const planes = this.game.planesCleared;

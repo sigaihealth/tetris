@@ -9,6 +9,7 @@ export class WellRenderer {
   private readonly blockGroup: THREE.Group;
   private readonly activeGroup: THREE.Group;
   private readonly ghostGroup: THREE.Group;
+  private lastWellSnapshot = '';
 
   constructor(scene: THREE.Scene, w: number, d: number, h: number) {
     this.scene = scene;
@@ -27,6 +28,22 @@ export class WellRenderer {
   }
 
   updateWell(well: Well): void {
+    // Only rebuild if the well has actually changed (after piece locks / plane clears)
+    // Use a simple hash of occupied cells
+    let snapshot = '';
+    for (let y = 0; y < well.height; y++) {
+      for (let z = 0; z < well.depth; z++) {
+        for (let x = 0; x < well.width; x++) {
+          const cell = well.getCell(x, y, z);
+          if (cell !== 0) {
+            snapshot += `${x},${y},${z}:${cell};`;
+          }
+        }
+      }
+    }
+    if (snapshot === this.lastWellSnapshot) return;
+    this.lastWellSnapshot = snapshot;
+
     this.blockGroup.clear();
     for (let y = 0; y < well.height; y++) {
       for (let z = 0; z < well.depth; z++) {
@@ -46,8 +63,7 @@ export class WellRenderer {
     this.activeGroup.clear();
     if (!piece) return;
 
-    const worldCubes = piece.worldCubes();
-    for (const [x, y, z] of worldCubes) {
+    for (const [x, y, z] of piece.worldCubes()) {
       const block = BlockMesh.createBlock(piece.colorId);
       block.position.set(x, y, z);
       this.activeGroup.add(block);

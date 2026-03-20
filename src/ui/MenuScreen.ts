@@ -16,14 +16,15 @@ const WELL_CONFIGS: { size: WellSize; label: string; dim: string }[] = [
 ];
 
 const CONTROLS: [string, string][] = [
-  ['← →', 'Move'],
-  ['↑ ↓', 'Move Z'],
-  ['Q / E', 'Rotate X'],
-  ['A / D', 'Rotate Y'],
-  ['Z / C', 'Rotate Z'],
-  ['Space', 'Drop'],
-  ['Shift', 'Soft Drop'],
-  ['P / Esc', 'Pause'],
+  ['WASD / Arrows', 'Move piece'],
+  ['I / K', 'Rotate X'],
+  ['J / L', 'Rotate Y'],
+  ['U / O', 'Rotate Z'],
+  ['Space', 'Hard drop'],
+  ['Shift', 'Soft drop'],
+  ['Q / E', 'Orbit camera'],
+  ['Esc', 'Pause'],
+  ['M', 'Mute'],
 ];
 
 function el(tag: string, className?: string, text?: string): HTMLElement {

@@ -33,19 +33,24 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     // Lighting
-    const ambient = new THREE.AmbientLight(0x404060, 0.6);
+    const ambient = new THREE.AmbientLight(0x6070a0, 0.8);
     this.scene.add(ambient);
 
-    const directional = new THREE.DirectionalLight(0xffffff, 1.0);
-    directional.position.set(5, 10, 5);
+    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
+    directional.position.set(5, 12, 5);
     directional.castShadow = true;
     this.scene.add(directional);
 
-    const point = new THREE.PointLight(0x4060ff, 0.5);
-    point.position.set(0, 2, 0);
+    // Secondary fill light from opposite side
+    const fill = new THREE.DirectionalLight(0x8090ff, 0.4);
+    fill.position.set(-5, 8, -5);
+    this.scene.add(fill);
+
+    const point = new THREE.PointLight(0x6080ff, 0.8, 30);
+    point.position.set(0, 5, 0);
     this.scene.add(point);
 
     // Environment map for glass reflections
@@ -64,9 +69,9 @@ export class SceneManager {
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.4,  // strength
-      0.3,  // radius
-      0.85, // threshold
+      0.6,  // strength — higher for visible glow
+      0.4,  // radius
+      0.7,  // threshold — lower to catch more of the glass colors
     );
     this.composer.addPass(bloomPass);
 
