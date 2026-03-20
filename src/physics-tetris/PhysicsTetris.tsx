@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { useEffect, useRef, useCallback } from 'react';
-import Matter from 'matter-js';
+import * as Matter from 'matter-js';
 
-const { Engine, World, Bodies, Body, Composite, Events, Runner } = Matter;
+const { Engine, Bodies, Body, Composite } = Matter;
 
 /* ────────────────────────────────────────────────────────
    Constants
