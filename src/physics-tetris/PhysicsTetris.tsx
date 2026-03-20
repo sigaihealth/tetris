@@ -95,12 +95,12 @@ function createPiece(type: string, x: number, y: number, cellSize: number) {
   );
   const body = Body.create({
     parts,
-    restitution: 0.08,
-    friction: 0.55,
-    frictionStatic: 0.8,
-    frictionAir: 0.05,
+    restitution: 0.02,       // almost no bounce
+    friction: 0.8,            // grip surfaces well
+    frictionStatic: 1.2,      // very hard to slide once stopped
+    frictionAir: 0.08,        // air drag slows movement
   });
-  Body.setInertia(body, body.inertia * 1.5); // slight angular damping effect
+  Body.setInertia(body, body.inertia * 5); // HIGH inertia = strongly resists toppling
   body.pieceType = type;
   body.pieceColor = def.color;
   return body;
@@ -246,7 +246,7 @@ export default function PhysicsTetris() {
     // Matter.js engine
     const engine = Engine.create();
     engine.gravity.x = 0;
-    engine.gravity.y = 1.2;
+    engine.gravity.y = 0.8; // gentler gravity — more time to control pieces
 
     // Walls (static)
     const leftWall = Bodies.rectangle(
@@ -307,7 +307,11 @@ export default function PhysicsTetris() {
         return;
       }
 
-      // Make settled piece static-ish (high friction, very damped)
+      // Snap to nearest 90-degree angle before locking for clean stacking
+      const lockAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2);
+      Body.setAngle(activePiece, lockAngle);
+      Body.setVelocity(activePiece, { x: 0, y: 0 });
+      Body.setAngularVelocity(activePiece, 0);
       Body.setStatic(activePiece, true);
       settledBodies.push(activePiece);
       score += 1;
@@ -329,18 +333,30 @@ export default function PhysicsTetris() {
         return;
       }
 
-      // Apply forces from keys
+      // Apply forces from keys — strong, responsive controls
       if (activePiece) {
-        const forceMag = 0.012 * (activePiece.mass || 1);
+        const forceMag = 0.025 * (activePiece.mass || 1);
+
         if (keys['ArrowLeft'] || keys['KeyA']) {
           Body.applyForce(activePiece, activePiece.position, { x: -forceMag, y: 0 });
+          // Cap horizontal velocity so it doesn't fly off
+          if (activePiece.velocity.x < -4) Body.setVelocity(activePiece, { x: -4, y: activePiece.velocity.y });
         }
         if (keys['ArrowRight'] || keys['KeyD']) {
           Body.applyForce(activePiece, activePiece.position, { x: forceMag, y: 0 });
+          if (activePiece.velocity.x > 4) Body.setVelocity(activePiece, { x: 4, y: activePiece.velocity.y });
         }
         if (keys['ArrowDown'] || keys['KeyS']) {
-          Body.applyForce(activePiece, activePiece.position, { x: 0, y: forceMag * 2.5 });
+          Body.applyForce(activePiece, activePiece.position, { x: 0, y: forceMag * 3 });
         }
+
+        // Angular damping — strongly resist spinning so pieces stay flat
+        Body.setAngularVelocity(activePiece, activePiece.angularVelocity * 0.85);
+
+        // Gentle angle correction — nudge toward nearest 90-degree alignment
+        const snapAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2);
+        const angleDiff = snapAngle - activePiece.angle;
+        Body.setAngularVelocity(activePiece, activePiece.angularVelocity + angleDiff * 0.04);
       }
 
       // Step physics (fixed timestep)
@@ -350,12 +366,12 @@ export default function PhysicsTetris() {
       if (activePiece) {
         const vel = activePiece.velocity;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y) + Math.abs(activePiece.angularVelocity);
-        if (speed < 0.3 && activePiece.position.y > offsetY) {
+        if (speed < 0.5 && activePiece.position.y > offsetY) {
           settleCounter++;
         } else {
-          settleCounter = Math.max(0, settleCounter - 2);
+          settleCounter = Math.max(0, settleCounter - 1);
         }
-        if (settleCounter > 35) {
+        if (settleCounter > 60) { // ~1 second of stillness before locking
           lockPiece();
           if (!gameOver) spawnPiece();
         }
@@ -509,13 +525,19 @@ export default function PhysicsTetris() {
       if (!activePiece || gameOver) return;
 
       if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-        // Rotate via torque
-        Body.setAngularVelocity(activePiece, activePiece.angularVelocity + 0.12);
+        // Snap rotate 90 degrees — much more controllable than torque
+        const targetAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 2;
+        Body.setAngle(activePiece, targetAngle);
+        Body.setAngularVelocity(activePiece, 0);
       }
 
       if (e.code === 'Space') {
-        // Slam down
-        Body.applyForce(activePiece, activePiece.position, { x: 0, y: 0.06 * (activePiece.mass || 1) });
+        // Slam down — fast, kills horizontal movement, straightens piece
+        Body.setVelocity(activePiece, { x: 0, y: 12 });
+        Body.setAngularVelocity(activePiece, 0);
+        // Snap angle to nearest 90 degrees
+        const sAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2);
+        Body.setAngle(activePiece, sAngle);
       }
     }
 
