@@ -28,14 +28,16 @@ function getGlassMaterial(colorId: number): THREE.MeshPhysicalMaterial {
     mat = new THREE.MeshPhysicalMaterial({
       color,
       transparent: true,
-      transmission: 0.6,
+      transmission: 0.4,
       roughness: 0.05,
-      thickness: 0.8,
-      ior: 1.5,
+      thickness: 1.0,
+      ior: 1.8,
       clearcoat: 1.0,
       clearcoatRoughness: 0.05,
       side: THREE.DoubleSide,
-      envMapIntensity: 1.5,
+      envMapIntensity: 2.0,
+      emissive: color,
+      emissiveIntensity: 0.15,
     });
     glassMaterials.set(colorId, mat);
   }
@@ -82,20 +84,38 @@ export class BlockMesh {
   static createWellFrame(w: number, d: number, h: number): THREE.Group {
     const group = new THREE.Group();
 
+    // Well wireframe edges — brighter
     const boxGeo = new THREE.BoxGeometry(w, h, d);
     const edgesGeo = new THREE.EdgesGeometry(boxGeo);
     const lineMat = new THREE.LineBasicMaterial({
-      color: 0x5566aa,
+      color: 0x6688cc,
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.7,
     });
     const wireframe = new THREE.LineSegments(edgesGeo, lineMat);
     wireframe.position.set(w / 2 - 0.5, h / 2 - 0.5, d / 2 - 0.5);
     group.add(wireframe);
 
-    const grid = new THREE.GridHelper(Math.max(w, d), Math.max(w, d), 0x4455aa, 0x334477);
+    // Bright glowing floor grid
+    const grid = new THREE.GridHelper(Math.max(w, d), Math.max(w, d), 0x6688ff, 0x4466cc);
     grid.position.set(w / 2 - 0.5, -0.5, d / 2 - 0.5);
     group.add(grid);
+
+    // Solid floor plane for visibility (slightly transparent)
+    const floorGeo = new THREE.PlaneGeometry(w, d);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x2233558,
+      transparent: true,
+      opacity: 0.4,
+      metalness: 0.3,
+      roughness: 0.7,
+      side: THREE.DoubleSide,
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(w / 2 - 0.5, -0.5, d / 2 - 0.5);
+    floor.receiveShadow = true;
+    group.add(floor);
 
     return group;
   }

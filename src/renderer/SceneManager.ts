@@ -12,9 +12,12 @@ export class SceneManager {
   private readonly clock: THREE.Clock;
 
   constructor(canvas: HTMLCanvasElement) {
-    // Scene
+    // Scene — lighter blue-gray background for a refreshing look
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a0f);
+    this.scene.background = new THREE.Color(0x1a1e2e);
+
+    // Subtle fog for depth
+    this.scene.fog = new THREE.FogExp2(0x1a1e2e, 0.02);
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(
@@ -30,33 +33,42 @@ export class SceneManager {
       antialias: true,
     });
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.4;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Lighting
-    const ambient = new THREE.AmbientLight(0x6070a0, 0.8);
+    // Lighting — bright and clear
+    const ambient = new THREE.AmbientLight(0x8090c0, 1.0);
     this.scene.add(ambient);
 
-    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
-    directional.position.set(5, 12, 5);
+    // Main key light from above
+    const directional = new THREE.DirectionalLight(0xffffff, 2.0);
+    directional.position.set(5, 15, 5);
     directional.castShadow = true;
+    directional.shadow.mapSize.set(1024, 1024);
     this.scene.add(directional);
 
-    // Secondary fill light from opposite side
-    const fill = new THREE.DirectionalLight(0x8090ff, 0.4);
+    // Fill light from opposite side
+    const fill = new THREE.DirectionalLight(0xa0b0ff, 0.6);
     fill.position.set(-5, 8, -5);
     this.scene.add(fill);
 
-    const point = new THREE.PointLight(0x6080ff, 0.8, 30);
-    point.position.set(0, 5, 0);
-    this.scene.add(point);
+    // Bright point light inside the well area — illuminates blocks from within
+    const wellLight = new THREE.PointLight(0x7090ff, 1.2, 40);
+    wellLight.position.set(0, 6, 0);
+    this.scene.add(wellLight);
 
-    // Environment map for glass reflections
+    // Floor up-light — makes the bottom of the well glow
+    const floorLight = new THREE.PointLight(0x4466cc, 1.5, 15);
+    floorLight.position.set(0, -1, 0);
+    this.scene.add(floorLight);
+
+    // Environment map for glass reflections — brighter
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     const envScene = new THREE.Scene();
-    envScene.background = new THREE.Color(0x0a0a0f);
+    envScene.background = new THREE.Color(0x2a3050);
     const envTexture = pmremGenerator.fromScene(envScene).texture;
     this.scene.environment = envTexture;
     pmremGenerator.dispose();
@@ -69,9 +81,9 @@ export class SceneManager {
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.6,  // strength — higher for visible glow
+      0.5,  // strength
       0.4,  // radius
-      0.7,  // threshold — lower to catch more of the glass colors
+      0.75, // threshold
     );
     this.composer.addPass(bloomPass);
 
