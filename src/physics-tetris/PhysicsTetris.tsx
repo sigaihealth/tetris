@@ -250,21 +250,20 @@ export default function PhysicsTetris() {
     engine.gravity.x = 0;
     engine.gravity.y = 0.8; // gentler gravity — more time to control pieces
 
-    // Walls (static)
+    // Walls (static) — very slippery so pieces don't stick
+    const wallOpts = { isStatic: true, label: 'wall', friction: 0.02, frictionStatic: 0.02, restitution: 0.1 };
     const leftWall = Bodies.rectangle(
       offsetX - wallThickness / 2, offsetY + chamberH / 2,
-      wallThickness, chamberH + wallThickness,
-      { isStatic: true, label: 'wall' },
+      wallThickness, chamberH + wallThickness, wallOpts,
     );
     const rightWall = Bodies.rectangle(
       offsetX + chamberW + wallThickness / 2, offsetY + chamberH / 2,
-      wallThickness, chamberH + wallThickness,
-      { isStatic: true, label: 'wall' },
+      wallThickness, chamberH + wallThickness, wallOpts,
     );
     const floor = Bodies.rectangle(
       offsetX + chamberW / 2, offsetY + chamberH + wallThickness / 2,
       chamberW + wallThickness * 2, wallThickness,
-      { isStatic: true, label: 'wall' },
+      { isStatic: true, label: 'wall', friction: 0.6, frictionStatic: 0.8 }, // floor has normal grip
     );
 
     Composite.add(engine.world, [leftWall, rightWall, floor]);
@@ -410,7 +409,7 @@ export default function PhysicsTetris() {
 
       // --- LINE CLEARING ---
       // Check each row: if 8+ out of 10 columns are filled, clear it
-      const CLEAR_THRESHOLD = Math.max(COLS - 2, Math.floor(COLS * 0.8)); // 8 of 10
+      const CLEAR_THRESHOLD = COLS - 1; // 9 of 10 — forgiving but not too easy
       const rowsToClear: number[] = [];
       for (let r = 0; r < ROWS + 4; r++) {
         let filled = 0;
