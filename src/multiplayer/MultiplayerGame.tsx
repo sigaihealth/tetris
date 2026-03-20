@@ -736,12 +736,15 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
   const startDasRef = useRef(startDas); startDasRef.current = startDas;
   const stopDasRef = useRef(stopDas); stopDasRef.current = stopDas;
 
-  /* ---- Keyboard ---- */
+  // Ref for started state used in keyboard handler
+  const startedKbRef = useRef(started); startedKbRef.current = started;
+
+  /* ---- Keyboard — registered ONCE, never re-registers, so DAS is never killed ---- */
   useEffect(() => {
     const down = (e) => {
-      if (!started || gameOver || matchResult) return;
+      if (!startedKbRef.current || gameOverRef.current || matchResultRef.current) return;
       if (e.key === "p" || e.key === "Escape") { setPaused(v => !v); return; }
-      if (paused) return;
+      if (pausedRef.current) return;
       if (e.repeat) return;
       switch (e.key) {
         case "ArrowLeft": e.preventDefault(); startDasRef.current(-1); break;
@@ -759,7 +762,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); stopDasRef.current(); };
-  }, [started, gameOver, paused, matchResult]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---- Soft drop hold ---- */
   useEffect(() => {

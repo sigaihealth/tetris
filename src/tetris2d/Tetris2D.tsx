@@ -948,12 +948,16 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   const startDasRef = useRef(startDas); startDasRef.current = startDas;
   const stopDasRef = useRef(stopDas); stopDasRef.current = stopDas;
 
-  // Keyboard
+  // Refs for state used in keyboard handler — so effect never re-registers
+  const startedRef = useRef(started); startedRef.current = started;
+  const pausedKbRef = useRef(paused); pausedKbRef.current = paused;
+
+  // Keyboard — registered ONCE, never re-registers, so DAS is never killed
   useEffect(() => {
     const down = (e) => {
-      if (!started || gameOver) return;
+      if (!startedRef.current || gameOverRef.current) return;
       if (e.key === "p" || e.key === "Escape") { setPaused(v => !v); return; }
-      if (paused) return;
+      if (pausedKbRef.current) return;
       if (e.repeat) return;
       switch (e.key) {
         case "ArrowLeft": e.preventDefault(); startDasRef.current(-1); break;
@@ -971,7 +975,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); stopDasRef.current(); };
-  }, [started, gameOver, paused]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Soft drop hold (disabled in zen mode — zen uses single-press drop only)
   useEffect(() => {
