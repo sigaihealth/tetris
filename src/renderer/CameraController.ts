@@ -10,9 +10,9 @@ export class CameraController {
 
   constructor(camera: THREE.PerspectiveCamera, w: number, d: number, h: number) {
     this.camera = camera;
-    this.center = new THREE.Vector3(w / 2 - 0.5, h / 2 - 0.5, d / 2 - 0.5);
-    this.orbitRadius = Math.max(w, d) * 2;
-    this.elevation = h * 0.8;
+    this.center = new THREE.Vector3(w / 2 - 0.5, h / 4, d / 2 - 0.5);
+    this.orbitRadius = Math.max(w, d) * 2.2;
+    this.elevation = h * 0.6;
     this.updateCamera();
   }
 
@@ -32,9 +32,9 @@ export class CameraController {
   }
 
   reset(w: number, d: number, h: number): void {
-    this.center.set(w / 2 - 0.5, h / 2 - 0.5, d / 2 - 0.5);
-    this.orbitRadius = Math.max(w, d) * 2;
-    this.elevation = h * 0.8;
+    this.center.set(w / 2 - 0.5, h / 4, d / 2 - 0.5);
+    this.orbitRadius = Math.max(w, d) * 2.2;
+    this.elevation = h * 0.6;
     this.targetAngle = 0;
     this.currentAngle = 0;
     this.updateCamera();

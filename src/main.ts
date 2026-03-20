@@ -84,6 +84,12 @@ class App {
       onMusicVolume: (v: number) => { this.audioEngine.musicVolume = v; },
     });
 
+    // Apply saved volumes
+    const savedSfx = parseFloat(localStorage.getItem('tetris_sfx_vol') ?? '0.7');
+    const savedMusic = parseFloat(localStorage.getItem('tetris_music_vol') ?? '0.5');
+    this.audioEngine.sfxVolume = savedSfx;
+    this.audioEngine.musicVolume = savedMusic;
+
     // Initial state
     this.hud.hide();
     this.menu.showStartScreen();

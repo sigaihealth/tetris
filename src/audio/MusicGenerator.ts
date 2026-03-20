@@ -11,7 +11,7 @@ export class MusicGenerator {
   private get ctx() { return this.engine.context; }
 
   start(): void {
-    if (this.isPlaying) return;
+    this.stop();
     this.isPlaying = true;
     this.createPad();
     this.scheduleArpeggio();

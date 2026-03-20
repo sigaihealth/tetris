@@ -164,13 +164,21 @@ export class MenuScreen {
     // SFX volume
     const sfxSection = el('div', 'menu-section');
     sfxSection.appendChild(el('div', 'menu-label', 'SFX VOLUME'));
-    sfxSection.appendChild(slider('sfx-vol', 0.7, this.callbacks.onSfxVolume));
+    const savedSfx = parseFloat(localStorage.getItem('tetris_sfx_vol') ?? '0.7');
+    sfxSection.appendChild(slider('sfx-vol', savedSfx, (v) => {
+      localStorage.setItem('tetris_sfx_vol', String(v));
+      this.callbacks.onSfxVolume(v);
+    }));
     this.content.appendChild(sfxSection);
 
     // Music volume
     const musicSection = el('div', 'menu-section');
     musicSection.appendChild(el('div', 'menu-label', 'MUSIC VOLUME'));
-    musicSection.appendChild(slider('music-vol', 0.5, this.callbacks.onMusicVolume));
+    const savedMusic = parseFloat(localStorage.getItem('tetris_music_vol') ?? '0.5');
+    musicSection.appendChild(slider('music-vol', savedMusic, (v) => {
+      localStorage.setItem('tetris_music_vol', String(v));
+      this.callbacks.onMusicVolume(v);
+    }));
     this.content.appendChild(musicSection);
 
     // Start button
