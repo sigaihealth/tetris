@@ -431,26 +431,22 @@ function MiniGrid({shape, color, size=14, dimmed=false}) {
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) if(shape[r][c]) cells.push([r,c]);
   if(!cells.length) return <div style={{width:size*cols,height:size*rows}} />;
   const gW=cols*size, gH=rows*size;
+  const P=2, CR=Math.round(size*0.3);
   const jellyColor = getJellyColor(color) || `${color}cc`;
+  const svgMask = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${gW+P*2}' height='${gH+P*2}'>${cells.map(([r,c])=>`<rect x='${c*size}' y='${r*size}' width='${size+P*2}' height='${size+P*2}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`;
   return (
-    <div style={{position:"relative",width:gW,height:gH,opacity:dimmed?0.3:1,transition:"opacity 0.2s"}}>
+    <div style={{position:"relative",width:gW+P*2,height:gH+P*2,opacity:dimmed?0.3:1,transition:"opacity 0.2s",margin:`-${P}px`}}>
       <div style={{
         position:"absolute",inset:0,
         background:jellyColor,
         backgroundImage:[
-          `radial-gradient(ellipse at 25% 18%, rgba(255,255,255,0.65) 0%, transparent ${Math.max(gW,gH)*0.5}px)`,
-          `linear-gradient(175deg, rgba(255,255,255,0.3) 0%, transparent 45%, rgba(0,0,0,0.12) 100%)`,
+          `radial-gradient(ellipse at 25% 15%, rgba(255,255,255,0.7) 0%, transparent ${Math.max(gW,gH)*0.45}px)`,
+          `linear-gradient(175deg, rgba(255,255,255,0.35) 0%, transparent 45%, rgba(0,0,0,0.15) 100%)`,
         ].join(','),
-        boxShadow:`inset 0 3px 4px rgba(255,255,255,0.6), inset 0 -2px 4px rgba(0,0,0,0.2), inset 0 0 ${Math.max(gW,gH)*0.3}px ${color}30, 0 3px 8px rgba(0,0,0,0.35), 0 0 12px ${color}25`,
-        borderRadius:3,
-        WebkitMaskImage:cells.map(()=>`linear-gradient(#fff,#fff)`).join(','),
-        WebkitMaskSize:cells.map(()=>`${size}px ${size}px`).join(','),
-        WebkitMaskPosition:cells.map(([r,c])=>`${c*size}px ${r*size}px`).join(','),
-        WebkitMaskRepeat:cells.map(()=>'no-repeat').join(','),
-        maskImage:cells.map(()=>`linear-gradient(#fff,#fff)`).join(','),
-        maskSize:cells.map(()=>`${size}px ${size}px`).join(','),
-        maskPosition:cells.map(([r,c])=>`${c*size}px ${r*size}px`).join(','),
-        maskRepeat:cells.map(()=>'no-repeat').join(','),
+        boxShadow:`inset 0 2px 4px rgba(255,255,255,0.55), inset 0 -2px 3px rgba(0,0,0,0.18), inset 0 0 ${Math.max(gW,gH)*0.3}px ${color}30, 0 3px 8px rgba(0,0,0,0.35), 0 0 10px ${color}22`,
+        borderRadius:CR,
+        WebkitMaskImage:svgMask, WebkitMaskSize:"100% 100%",
+        maskImage:svgMask, maskSize:"100% 100%",
       }} />
     </div>
   );
@@ -1165,13 +1161,22 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       transform:"perspective(600px) rotateX(1deg)",transformStyle:"preserve-3d",
       animation: shake ? "boardShake 0.3s ease-out" : isZen ? "zenBoardGlow 4s ease-in-out infinite" : "none",
     }}>
+      {/* SVG filter to soften block edges slightly */}
+      <svg style={{position:'absolute',width:0,height:0}}>
+        <defs>
+          <filter id="soften">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" />
+          </filter>
+        </defs>
+      </svg>
+
       {/* Grid lines — subtle glass etching */}
       <div style={{position:"absolute",top:2,left:2,width:COLS*CELL,height:ROWS*CELL,
         backgroundImage:`linear-gradient(rgba(100,150,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(100,150,255,0.06) 1px, transparent 1px)`,
         backgroundSize:`${CELL}px ${CELL}px`,borderRadius:10,pointerEvents:"none",zIndex:0}} />
 
-      {/* Blocks — ONE div per connected group using clip-path */}
-      <div style={{position:"relative",width:COLS*CELL,height:ROWS*CELL,zIndex:1}}>
+      {/* Blocks — ONE div per connected group, softened edges */}
+      <div style={{position:"relative",width:COLS*CELL,height:ROWS*CELL,zIndex:1,filter:"url(#soften)"}}>
         {/* Flash rows */}
         {flashRows.map(r => (
           <div key={`flash-${r}`} style={{position:"absolute",left:0,top:r*CELL,width:COLS*CELL,height:CELL,background:"rgba(255,255,255,0.9)",animation:"flashRow 0.2s ease-out",zIndex:5}} />
@@ -1284,28 +1289,20 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
             // with a CSS mask made from the cells.
             // Simplest: use an SVG mask or just stack cell-sized divs with no borders.
 
-            // FINAL APPROACH: One big div + CSS mask-image using linear gradients
-            // Build a mask: white where cells exist, transparent where they don't
-            const maskParts = [];
-            for(const [r,c] of g.cells) {
-              const x=((c-g.minC)*CELL), y=((r-g.minR)*CELL);
-              maskParts.push(`linear-gradient(#fff,#fff) ${x}px ${y}px / ${CELL}px ${CELL}px no-repeat`);
-            }
-            const maskVal = maskParts.join(',');
+            // Mask each cell with slightly oversized rounded rects that overlap neighbors
+            // This creates a unified shape with soft rounded edges everywhere
+            const P = 3; // padding — cells extend slightly beyond their grid bounds
+            const CR = 8; // corner radius for each cell mask
 
             return (
               <div key={`g${gi}`} className="jelly-block" style={{
-                position:"absolute", left:gX, top:gY, width:gW, height:gH,
+                position:"absolute", left:gX-P, top:gY-P, width:gW+P*2, height:gH+P*2,
                 background:jellyBg,
-                // Mask to piece shape — ONE element, no internal divisions
-                WebkitMaskImage:maskParts.map(()=>`linear-gradient(#fff,#fff)`).join(','),
-                WebkitMaskSize:maskParts.map((_,i)=>{const [r,c]=g.cells[i];return `${CELL}px ${CELL}px`}).join(','),
-                WebkitMaskPosition:g.cells.map(([r,c])=>`${(c-g.minC)*CELL}px ${(r-g.minR)*CELL}px`).join(','),
-                WebkitMaskRepeat:g.cells.map(()=>'no-repeat').join(','),
-                maskImage:maskParts.map(()=>`linear-gradient(#fff,#fff)`).join(','),
-                maskSize:g.cells.map(()=>`${CELL}px ${CELL}px`).join(','),
-                maskPosition:g.cells.map(([r,c])=>`${(c-g.minC)*CELL}px ${(r-g.minR)*CELL}px`).join(','),
-                maskRepeat:g.cells.map(()=>'no-repeat').join(','),
+                // SVG mask with rounded rects for organic shape
+                WebkitMaskImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${gW+P*2}' height='${gH+P*2}'>${g.cells.map(([r,c])=>`<rect x='${(c-g.minC)*CELL}' y='${(r-g.minR)*CELL}' width='${CELL+P*2}' height='${CELL+P*2}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`,
+                WebkitMaskSize:"100% 100%",
+                maskImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${gW+P*2}' height='${gH+P*2}'>${g.cells.map(([r,c])=>`<rect x='${(c-g.minC)*CELL}' y='${(r-g.minR)*CELL}' width='${CELL+P*2}' height='${CELL+P*2}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`,
+                maskSize:"100% 100%",
                 // 3D liquid glass — bright specular, deep depth, inner glow
                 backgroundImage:[
                   // Sharp specular highlight — bright white spot like light on glass
@@ -1332,7 +1329,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
                   // Color glow halo
                   `0 0 28px ${g.color}30`,
                 ].join(','),
-                borderRadius:6,
+                borderRadius:10,
                 animation: hasLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+(gi%5)*0.25}s ease-in-out infinite`,
                 animationDelay: hasLanding ? "0s" : `${(gi*0.3)%2.5}s`,
               }} />
