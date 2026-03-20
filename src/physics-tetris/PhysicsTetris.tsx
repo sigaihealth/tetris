@@ -298,10 +298,36 @@ export default function PhysicsTetris() {
       settleCounter = 0;
     }
 
+    // Occupancy grid — tracks which grid cells are taken by settled pieces
+    const gridOccupied = Array.from({ length: ROWS + 4 }, () => Array(COLS).fill(false));
+
+    function markOccupied(body: any) {
+      const type = body.pieceType;
+      const cells = PIECE_DEFS[type as keyof typeof PIECE_DEFS]?.cells;
+      if (!cells) return;
+
+      // Get world position of each cell based on body position, angle, and cell offsets
+      let sumX = 0, sumY = 0;
+      for (const [cx, cy] of cells) { sumX += cx; sumY += cy; }
+      const cenX = sumX / cells.length, cenY = sumY / cells.length;
+      const cos = Math.cos(body.angle), sin = Math.sin(body.angle);
+
+      for (const [cx, cy] of cells) {
+        const lx = (cx - cenX) * cellSize, ly = (cy - cenY) * cellSize;
+        const wx = body.position.x + lx * cos - ly * sin;
+        const wy = body.position.y + lx * sin + ly * cos;
+        const gc = Math.round((wx - offsetX - cellSize / 2) / cellSize);
+        const gr = Math.round((wy - offsetY - cellSize / 2) / cellSize);
+        if (gr >= 0 && gr < ROWS + 4 && gc >= 0 && gc < COLS) {
+          gridOccupied[gr][gc] = true;
+        }
+      }
+    }
+
     function lockPiece() {
       if (!activePiece) return;
 
-      // Check game over: if any part of the piece is above the chamber top
+      // Check game over
       const bounds = activePiece.bounds;
       if (bounds.min.y < offsetY - cellSize) {
         gameOver = true;
@@ -309,51 +335,75 @@ export default function PhysicsTetris() {
         return;
       }
 
+      const type = activePiece.pieceType;
+      const cells = PIECE_DEFS[type as keyof typeof PIECE_DEFS]?.cells;
+      if (!cells) return;
+
       // 1. Snap angle to nearest 90 degrees
       const lockAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2);
       Body.setAngle(activePiece, lockAngle);
 
-      // 2. Snap position to grid — align to nearest cell boundary
-      //    This ensures pieces stack cleanly and gaps don't appear
-      const pos = activePiece.position;
-      const gridX = Math.round((pos.x - offsetX) / cellSize) * cellSize + offsetX;
-      const gridY = Math.round((pos.y - offsetY) / cellSize) * cellSize + offsetY;
-      Body.setPosition(activePiece, { x: gridX, y: gridY });
+      // 2. Compute where each cell of the piece sits in the grid
+      //    Then snap the FIRST cell to its nearest grid position,
+      //    and derive the body position from that.
+      let sumX = 0, sumY = 0;
+      for (const [cx, cy] of cells) { sumX += cx; sumY += cy; }
+      const cenX = sumX / cells.length, cenY = sumY / cells.length;
+      const cos = Math.cos(lockAngle), sin = Math.sin(lockAngle);
 
-      // 3. After snapping, check for overlap with existing pieces and nudge if needed
-      //    Push the piece upward until it doesn't overlap settled bodies
+      // Current world position of cell[0]
+      const lx0 = (cells[0][0] - cenX) * cellSize;
+      const ly0 = (cells[0][1] - cenY) * cellSize;
+      const wx0 = activePiece.position.x + lx0 * cos - ly0 * sin;
+      const wy0 = activePiece.position.y + lx0 * sin + ly0 * cos;
+
+      // Snap cell[0] to nearest grid position
+      const snapCol = Math.round((wx0 - offsetX - cellSize / 2) / cellSize);
+      const snapRow = Math.round((wy0 - offsetY - cellSize / 2) / cellSize);
+      const targetX0 = offsetX + snapCol * cellSize + cellSize / 2;
+      const targetY0 = offsetY + snapRow * cellSize + cellSize / 2;
+
+      // Compute body position that puts cell[0] at the target
+      const bodyX = targetX0 - lx0 * cos + ly0 * sin;
+      const bodyY = targetY0 - lx0 * sin - ly0 * cos;
+      Body.setPosition(activePiece, { x: bodyX, y: bodyY });
+
+      // 3. Check if any cell overlaps occupied grid cells; if so nudge up
       let pushAttempts = 0;
       while (pushAttempts < 10) {
-        let overlapping = false;
-        for (const settled of settledBodies) {
-          if (Matter.SAT && Matter.SAT.collides) {
-            // Use SAT if available
-            for (const partA of activePiece.parts) {
-              for (const partB of settled.parts) {
-                if (partA === activePiece || partB === settled) continue;
-                const col = Matter.SAT.collides(partA, partB);
-                if (col && col.collided) { overlapping = true; break; }
-              }
-              if (overlapping) break;
-            }
-          } else {
-            // Fallback: AABB overlap check
-            const a = activePiece.bounds, b = settled.bounds;
-            if (a.min.x < b.max.x && a.max.x > b.min.x && a.min.y < b.max.y && a.max.y > b.min.y) {
-              overlapping = true;
-            }
+        let overlap = false;
+        for (const [cx, cy] of cells) {
+          const lx = (cx - cenX) * cellSize, ly = (cy - cenY) * cellSize;
+          const wx = activePiece.position.x + lx * cos - ly * sin;
+          const wy = activePiece.position.y + lx * sin + ly * cos;
+          const gc = Math.round((wx - offsetX - cellSize / 2) / cellSize);
+          const gr = Math.round((wy - offsetY - cellSize / 2) / cellSize);
+          if (gr >= 0 && gr < ROWS + 4 && gc >= 0 && gc < COLS && gridOccupied[gr][gc]) {
+            overlap = true;
+            break;
           }
-          if (overlapping) break;
         }
-        if (!overlapping) break;
-        // Nudge up by 1 cell
+        if (!overlap) break;
         Body.setPosition(activePiece, { x: activePiece.position.x, y: activePiece.position.y - cellSize });
         pushAttempts++;
+      }
+
+      // 4. Clamp: don't let piece extend outside walls
+      const newBounds = activePiece.bounds;
+      if (newBounds.min.x < offsetX) {
+        Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX - newBounds.min.x), y: activePiece.position.y });
+      }
+      if (newBounds.max.x > offsetX + chamberW) {
+        Body.setPosition(activePiece, { x: activePiece.position.x - (newBounds.max.x - offsetX - chamberW), y: activePiece.position.y });
       }
 
       Body.setVelocity(activePiece, { x: 0, y: 0 });
       Body.setAngularVelocity(activePiece, 0);
       Body.setStatic(activePiece, true);
+
+      // Mark cells as occupied
+      markOccupied(activePiece);
+
       settledBodies.push(activePiece);
       score += 1;
       activePiece = null;
