@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const COLS = 10;
 const ROWS = 20;
-const CELL = 28;
+const getCellSize = () => Math.min(28, Math.floor((window.innerWidth - 20) / (COLS + 1)));
+const getIsMobile = () => window.innerWidth < 600;
 const DROP_SPEEDS = [800,720,630,550,470,380,300,220,140,100,80,60,50,40,30];
 const PREVIEW_COUNT = 3;
 const LOCK_DELAY = 500;
@@ -105,6 +106,17 @@ function useQueue() {
   }, []);
   const peek = useCallback(() => [...queue.current.slice(0,PREVIEW_COUNT)], []);
   return {init, dequeue, peek};
+}
+
+function useViewport() {
+  const [cell, setCell] = useState(getCellSize);
+  const [isMobile, setIsMobile] = useState(getIsMobile);
+  useEffect(() => {
+    const onResize = () => { setCell(getCellSize()); setIsMobile(getIsMobile()); };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return { CELL: cell, isMobile };
 }
 
 // ==================== ASMR AUDIO ====================
@@ -470,6 +482,7 @@ function RRow({label, value, color, d=0}) {
 
 /* ==================== GAME ==================== */
 function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
+  const { CELL, isMobile } = useViewport();
   const target = config.target || challenge.target;
 
   const [board, setBoard] = useState(() => config.garbageRows>0 ? createGarbageBoard(config.garbageRows) : createBoard());
@@ -561,7 +574,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     const boardW = COLS * (CELL+1);
     setActionLabels(prev => [...prev, {id, text, color, x: boardW/2, y: ROWS*(CELL+1)/2 - 30 + yOffset}]);
     setTimeout(() => setActionLabels(prev => prev.filter(l => l.id !== id)), 1200);
-  }, []);
+  }, [CELL]);
 
   // Countdown
   useEffect(() => {
@@ -886,10 +899,138 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   else if (challenge.goal === "score" && target) progress = Math.min(score/target, 1);
   else if (challenge.goal === "survive" && config.timeLimit > 0) progress = Math.min(elapsed/config.timeLimit, 1);
 
+  const boardWidth = COLS * (CELL + 1);
+  const totalWidth = isMobile ? boardWidth + 8 : boardWidth + 270;
+  const mFs = isMobile ? 0.85 : 1; // mobile font scale
+
+  // -- Hold panel content --
+  const holdPanel = (
+    <SidePanel title="HOLD" highlight={!holdUsed && !!holdKey}>
+      <div style={{display:"flex",justifyContent:"center",padding:"6px 0",minHeight:isMobile?24:36}}>
+        {holdPieceData
+          ? <MiniGrid shape={holdPieceData.shape} color={holdPieceData.color} size={isMobile?10:13} dimmed={holdUsed} />
+          : <div style={{fontFamily:"'Orbitron'",fontSize:8,color:"#222",letterSpacing:1}}>{isMobile?"":"C / SHIFT"}</div>}
+      </div>
+    </SidePanel>
+  );
+
+  // -- Stats panels content --
+  const statsPanel = (
+    <>
+      <SidePanel title="SCORE">
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(14*mFs),fontWeight:700,color:"#00f0f0",textAlign:"center",
+          textShadow:"0 0 10px #00f0f033"}}>{score.toLocaleString()}</div>
+      </SidePanel>
+      <SidePanel title="LINES">
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(12*mFs),fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>
+          {target && challenge.goal === "lines" ? `${lines}/${target}` : lines}
+        </div>
+      </SidePanel>
+      <SidePanel title="LEVEL">
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(12*mFs),fontWeight:700,color:"#f0a000",textAlign:"center",
+          textShadow:"0 0 10px #f0a00033"}}>{level}</div>
+      </SidePanel>
+      {combo > 1 && (
+        <SidePanel title="COMBO">
+          <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(14*mFs),fontWeight:900,color:"#f060a0",textAlign:"center",
+            textShadow:"0 0 12px #f060a044"}}>{combo}x</div>
+        </SidePanel>
+      )}
+    </>
+  );
+
+  // -- Next panel content --
+  const nextPanel = (
+    <SidePanel title="NEXT">
+      <div style={{display:"flex",flexDirection:isMobile?"row":"column",gap:isMobile?6:10,alignItems:"center",padding:"4px 0"}}>
+        {previewKeys.map((k, i) => {
+          const p = PIECES[k];
+          return <MiniGrid key={`${k}-${i}`} shape={p.shape} color={p.color} size={isMobile?(i===0?11:9):(i===0?14:11)} dimmed={i>0} />;
+        })}
+        {previewKeys.length === 0 && <div style={{height:isMobile?30:80}} />}
+      </div>
+    </SidePanel>
+  );
+
+  // -- Board content --
+  const boardEl = (
+    <div style={{
+      position:"relative",border:"2px solid #3a4060",borderRadius:8,
+      background:"linear-gradient(180deg, #10121e, #0c0e18)",boxShadow:"0 0 40px rgba(0,200,255,0.06),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)",padding:2,
+      animation: shake ? "boardShake 0.3s ease-out" : "none",
+    }}>
+      <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,
+        backgroundImage:`linear-gradient(rgba(80,100,160,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,0.15) 1px, transparent 1px)`,
+        backgroundSize:`${CELL+1}px ${CELL+1}px`}}>
+        {display.flat().map((cell, i) => {
+          const r = Math.floor(i/COLS);
+          const isFlash = flashRows.includes(r);
+          const isGhost = cell && cell.length > 7;
+          const baseColor = isGhost ? cell?.slice(0,7) : cell;
+          return (
+            <div key={i} style={{
+              width:CELL, height:CELL, borderRadius: cell ? 6 : 3,
+              background: isFlash ? "#fff"
+                : cell && !isGhost
+                  ? `linear-gradient(145deg, ${baseColor}ee, ${baseColor}99)`
+                : isGhost
+                  ? `linear-gradient(145deg, ${baseColor}20, ${baseColor}10)`
+                : (r+(i%COLS))%2===0 ? "#12142200" : "#1618260a",
+              boxShadow: cell && !isGhost
+                ? `inset 0 4px 6px rgba(255,255,255,0.35), inset 0 -3px 5px rgba(0,0,0,0.3), 0 0 8px ${baseColor}55, 0 2px 4px rgba(0,0,0,0.4)`
+                : isGhost ? `inset 0 2px 4px ${baseColor}15` : "none",
+              transition: isFlash ? "none" : "background 0.06s, transform 0.15s",
+              animation: isFlash ? "flashRow 0.2s ease-out"
+                : cell && !isGhost ? "jelloIdle 3s ease-in-out infinite" : "none",
+              animationDelay: cell && !isGhost ? `${(i * 0.1) % 2}s` : "0s",
+              border: cell && !isGhost ? `1px solid ${baseColor}44` : "none",
+            }} />
+          );
+        })}
+      </div>
+
+      {/* Action labels */}
+      {actionLabels.map(l => <ActionLabel key={l.id} {...l} />)}
+
+      {countdown > 0 && (
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000000cc",borderRadius:6,zIndex:10}}>
+          <div key={countdown} style={{fontFamily:"'Orbitron'",fontSize:isMobile?48:72,fontWeight:900,color:"#00f0f0",
+            textShadow:"0 0 40px #00f0f088",animation:"countPulse 0.7s ease-out"}}>{countdown}</div>
+        </div>
+      )}
+      {paused && (
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000000bb",borderRadius:6,zIndex:10}}>
+          <div style={{fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,color:"#f0f000",
+            animation:"pulse 1.5s ease-in-out infinite",textShadow:"0 0 20px #f0f00066"}}>PAUSED</div>
+        </div>
+      )}
+    </div>
+  );
+
+  // -- Desktop control buttons (right panel) --
+  const desktopControls = (
+    <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:4}}>
+      <div style={{display:"flex",justifyContent:"center"}}><CtrlBtn label="\u25B2" onClick={rotatePiece} /></div>
+      <div style={{display:"flex",gap:5,justifyContent:"center"}}>
+        <CtrlBtn label="\u25C0" onClick={() => move(-1)} />
+        <CtrlBtn label="\u25BC" onClick={drop} />
+        <CtrlBtn label="\u25B6" onClick={() => move(1)} />
+      </div>
+      <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:2}}>
+        <CtrlBtn label="HOLD" onClick={holdPiece} wide />
+      </div>
+      <div style={{display:"flex",justifyContent:"center",marginTop:2}}>
+        <CtrlBtn label="DROP" onClick={hardDrop} wide />
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
+      justifyContent:isMobile?"flex-start":"center",
       background:"linear-gradient(160deg,#0a0a12,#0d0d1a 50%,#0a0a12)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
-      color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:"12px 8px"}}
+      color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:isMobile?"6px 4px":"12px 8px",
+      touchAction:"none",WebkitTouchCallout:"none"}}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
@@ -902,147 +1043,125 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes jelloLand{0%{transform:scaleY(0.7) scaleX(1.15)}30%{transform:scaleY(1.12) scaleX(0.92)}50%{transform:scaleY(0.95) scaleX(1.04)}70%{transform:scaleY(1.03) scaleX(0.98)}100%{transform:scaleY(1) scaleX(1)}}
         @keyframes jelloIdle{0%,100%{transform:scaleY(1) scaleX(1)}50%{transform:scaleY(1.015) scaleX(0.99)}}
         .menu-btn:hover{color:#888!important;border-color:#333!important}
+        .touch-btn{-webkit-tap-highlight-color:transparent}
+        .touch-btn:active{opacity:0.7;transform:scale(0.93)}
       `}</style>
 
       {/* Header */}
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8,
-        width:COLS*(CELL+1)+270,maxWidth:"98vw",justifyContent:"space-between"}}>
+      <div style={{display:"flex",alignItems:"center",gap:isMobile?6:12,marginBottom:isMobile?4:8,
+        width:totalWidth,maxWidth:"98vw",justifyContent:"space-between",flexWrap:"wrap"}}>
         <button className="menu-btn" onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:2,
-          padding:"4px 10px",border:"1px solid #1a1a2e",borderRadius:4,background:"transparent",color:"#333",cursor:"pointer",transition:"all 0.15s"}}>← MENU</button>
-        <div style={{fontFamily:"'Orbitron'",fontSize:10,color:"#444",letterSpacing:2,textAlign:"center"}}>
+          padding:"4px 10px",border:"1px solid #1a1a2e",borderRadius:4,background:"transparent",color:"#333",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
+        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?8:10,color:"#444",letterSpacing:isMobile?1:2,textAlign:"center",flex:isMobile?1:undefined,minWidth:0}}>
           {challenge.icon} {challenge.name}{" "}
-          <span style={{color:DIFF_COLORS[difficulty],fontSize:9}}>{difficulty.toUpperCase()}</span>
+          <span style={{color:DIFF_COLORS[difficulty],fontSize:isMobile?7:9}}>{difficulty.toUpperCase()}</span>
         </div>
         {config.timeLimit > 0 ? (
-          <div style={{fontFamily:"'Orbitron'",fontSize:18,fontWeight:900,color:timerColor,
+          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?14:18,fontWeight:900,color:timerColor,
             textShadow:`0 0 12px ${timerColor}55`,animation:timerUrgent?"urgentPulse 0.5s ease-in-out infinite":"none",
-            minWidth:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
+            minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
         ) : (
-          <div style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,color:"#282828",minWidth:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?11:14,fontWeight:700,color:"#282828",minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
         )}
       </div>
 
       {/* Progress */}
       {challenge.goal !== "none" && (
-        <div style={{width:COLS*(CELL+1)+270,maxWidth:"98vw",height:3,background:"#0e0e18",borderRadius:2,marginBottom:8}}>
+        <div style={{width:totalWidth,maxWidth:"98vw",height:3,background:"#0e0e18",borderRadius:2,marginBottom:isMobile?4:8}}>
           <div style={{height:"100%",borderRadius:2,transition:"width 0.35s ease-out",width:`${progress*100}%`,
             background:progress>0.85?"linear-gradient(90deg,#00f0f0,#00f040)":"#00f0f0",
             boxShadow:`0 0 8px ${progress>0.85?"#00f040":"#00f0f0"}44`}} />
         </div>
       )}
 
-      <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
-
-        {/* Left: Hold + Stats */}
-        <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:80}}>
-          <SidePanel title="HOLD" highlight={!holdUsed && !!holdKey}>
-            <div style={{display:"flex",justifyContent:"center",padding:"6px 0",minHeight:36}}>
-              {holdPieceData
-                ? <MiniGrid shape={holdPieceData.shape} color={holdPieceData.color} size={13} dimmed={holdUsed} />
-                : <div style={{fontFamily:"'Orbitron'",fontSize:8,color:"#222",letterSpacing:1}}>C / SHIFT</div>}
-            </div>
-          </SidePanel>
-          <SidePanel title="SCORE">
-            <div style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,color:"#00f0f0",textAlign:"center",
-              textShadow:"0 0 10px #00f0f033"}}>{score.toLocaleString()}</div>
-          </SidePanel>
-          <SidePanel title="LINES">
-            <div style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>
-              {target && challenge.goal === "lines" ? `${lines}/${target}` : lines}
-            </div>
-          </SidePanel>
-          <SidePanel title="LEVEL">
-            <div style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:700,color:"#f0a000",textAlign:"center",
-              textShadow:"0 0 10px #f0a00033"}}>{level}</div>
-          </SidePanel>
-          {combo > 1 && (
-            <SidePanel title="COMBO">
-              <div style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:900,color:"#f060a0",textAlign:"center",
-                textShadow:"0 0 12px #f060a044"}}>{combo}x</div>
-            </SidePanel>
-          )}
-        </div>
-
-        {/* Board */}
-        <div style={{
-          position:"relative",border:"2px solid #3a4060",borderRadius:8,
-          background:"linear-gradient(180deg, #10121e, #0c0e18)",boxShadow:"0 0 40px rgba(0,200,255,0.06),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)",padding:2,
-          animation: shake ? "boardShake 0.3s ease-out" : "none",
-        }}>
-          <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,
-            backgroundImage:`linear-gradient(rgba(80,100,160,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(80,100,160,0.15) 1px, transparent 1px)`,
-            backgroundSize:`${CELL+1}px ${CELL+1}px`}}>
-            {display.flat().map((cell, i) => {
-              const r = Math.floor(i/COLS);
-              const isFlash = flashRows.includes(r);
-              const isGhost = cell && cell.length > 7;
-              const baseColor = isGhost ? cell?.slice(0,7) : cell;
-              return (
-                <div key={i} style={{
-                  width:CELL, height:CELL, borderRadius: cell ? 6 : 3,
-                  background: isFlash ? "#fff"
-                    : cell && !isGhost
-                      ? `linear-gradient(145deg, ${baseColor}ee, ${baseColor}99)`
-                    : isGhost
-                      ? `linear-gradient(145deg, ${baseColor}20, ${baseColor}10)`
-                    : (r+(i%COLS))%2===0 ? "#12142200" : "#1618260a",
-                  boxShadow: cell && !isGhost
-                    ? `inset 0 4px 6px rgba(255,255,255,0.35), inset 0 -3px 5px rgba(0,0,0,0.3), 0 0 8px ${baseColor}55, 0 2px 4px rgba(0,0,0,0.4)`
-                    : isGhost ? `inset 0 2px 4px ${baseColor}15` : "none",
-                  transition: isFlash ? "none" : "background 0.06s, transform 0.15s",
-                  animation: isFlash ? "flashRow 0.2s ease-out"
-                    : cell && !isGhost ? "jelloIdle 3s ease-in-out infinite" : "none",
-                  animationDelay: cell && !isGhost ? `${(i * 0.1) % 2}s` : "0s",
-                  border: cell && !isGhost ? `1px solid ${baseColor}44` : "none",
-                }} />
-              );
-            })}
+      {/* ==== DESKTOP LAYOUT ==== */}
+      {!isMobile && (
+        <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          {/* Left: Hold + Stats */}
+          <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:80}}>
+            {holdPanel}
+            {statsPanel}
           </div>
 
-          {/* Action labels */}
-          {actionLabels.map(l => <ActionLabel key={l.id} {...l} />)}
+          {/* Board */}
+          {boardEl}
 
-          {countdown > 0 && (
-            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000000cc",borderRadius:6,zIndex:10}}>
-              <div key={countdown} style={{fontFamily:"'Orbitron'",fontSize:72,fontWeight:900,color:"#00f0f0",
-                textShadow:"0 0 40px #00f0f088",animation:"countPulse 0.7s ease-out"}}>{countdown}</div>
-            </div>
-          )}
-          {paused && (
-            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000000bb",borderRadius:6,zIndex:10}}>
-              <div style={{fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,color:"#f0f000",
-                animation:"pulse 1.5s ease-in-out infinite",textShadow:"0 0 20px #f0f00066"}}>PAUSED</div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Next + Controls */}
-        <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:80}}>
-          <SidePanel title="NEXT">
-            <div style={{display:"flex",flexDirection:"column",gap:10,alignItems:"center",padding:"4px 0"}}>
-              {previewKeys.map((k, i) => {
-                const p = PIECES[k];
-                return <MiniGrid key={`${k}-${i}`} shape={p.shape} color={p.color} size={i===0?14:11} dimmed={i>0} />;
-              })}
-              {previewKeys.length === 0 && <div style={{height:80}} />}
-            </div>
-          </SidePanel>
-
-          <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:4}}>
-            <div style={{display:"flex",justifyContent:"center"}}><CtrlBtn label="▲" onClick={rotatePiece} /></div>
-            <div style={{display:"flex",gap:5,justifyContent:"center"}}>
-              <CtrlBtn label="◀" onClick={() => move(-1)} />
-              <CtrlBtn label="▼" onClick={drop} />
-              <CtrlBtn label="▶" onClick={() => move(1)} />
-            </div>
-            <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:2}}>
-              <CtrlBtn label="HOLD" onClick={holdPiece} wide />
-            </div>
-            <div style={{display:"flex",justifyContent:"center",marginTop:2}}>
-              <CtrlBtn label="DROP" onClick={hardDrop} wide />
-            </div>
+          {/* Right: Next + Controls */}
+          <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:80}}>
+            {nextPanel}
+            {desktopControls}
           </div>
         </div>
+      )}
+
+      {/* ==== MOBILE LAYOUT ==== */}
+      {isMobile && (
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:"98vw"}}>
+          {/* Board centered */}
+          {boardEl}
+
+          {/* Info panels below board in horizontal row */}
+          <div style={{display:"flex",gap:6,marginTop:6,width:boardWidth+4,justifyContent:"center",flexWrap:"wrap"}}>
+            <div style={{flex:"0 0 auto",minWidth:60}}>{holdPanel}</div>
+            <div style={{flex:"0 0 auto",minWidth:60}}>{nextPanel}</div>
+            <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:"1 1 auto",minWidth:0}}>
+              <SidePanel title="SCORE">
+                <div style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#00f0f0",textAlign:"center"}}>{score.toLocaleString()}</div>
+              </SidePanel>
+              <SidePanel title="LNS">
+                <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>
+                  {target && challenge.goal === "lines" ? `${lines}/${target}` : lines}
+                </div>
+              </SidePanel>
+              <SidePanel title="LVL">
+                <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#f0a000",textAlign:"center"}}>{level}</div>
+              </SidePanel>
+              {combo > 1 && (
+                <SidePanel title="CMB">
+                  <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:900,color:"#f060a0",textAlign:"center"}}>{combo}x</div>
+                </SidePanel>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile touch control buttons */}
+          <MobileTouchControls
+            onMove={move} onRotate={rotatePiece} onDrop={drop}
+            onHardDrop={hardDrop} onHold={holdPiece}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
+  const tb = (label, action, flex) => (
+    <button className="touch-btn"
+      onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); action(); }}
+      onMouseDown={(e) => { e.preventDefault(); action(); }}
+      style={{
+        fontFamily:"'Orbitron'",fontSize:label.length>2?11:18,fontWeight:700,
+        flex:flex||"1 1 0",height:52,minWidth:48,
+        border:"1px solid #2a2a3e",borderRadius:8,
+        background:"rgba(15,15,30,0.85)",color:"#8888aa",
+        display:"flex",alignItems:"center",justifyContent:"center",
+        cursor:"pointer",letterSpacing:label.length>2?1:0,
+        WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
+        transition:"opacity 0.1s, transform 0.1s",
+      }}>{label}</button>
+  );
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:8,width:"100%",maxWidth:320,padding:"0 4px"}}>
+      <div style={{display:"flex",gap:6}}>
+        {tb("\u25C0", () => onMove(-1))}
+        {tb("\u25BC", onDrop)}
+        {tb("\u21BB", onRotate)}
+        {tb("\u25B6", () => onMove(1))}
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        {tb("HOLD", onHold)}
+        {tb("\u2B07 DROP", onHardDrop, "2 1 0")}
       </div>
     </div>
   );
