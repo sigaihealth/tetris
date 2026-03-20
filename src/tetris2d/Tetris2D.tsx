@@ -12,36 +12,36 @@ const DAS_DELAY = 170;
 const DAS_RATE = 50;
 
 const PIECES = {
-  I:{shape:[[1,1,1,1]],color:"#22ccee",key:"I"},   // Blue raspberry
-  O:{shape:[[1,1],[1,1]],color:"#eecc22",key:"O"},  // Lemon drop
-  T:{shape:[[0,1,0],[1,1,1]],color:"#bb44ee",key:"T"}, // Grape
-  S:{shape:[[0,1,1],[1,1,0]],color:"#44dd66",key:"S"}, // Green apple
-  Z:{shape:[[1,1,0],[0,1,1]],color:"#ee3355",key:"Z"}, // Strawberry
-  J:{shape:[[1,0,0],[1,1,1]],color:"#4488ff",key:"J"}, // Blueberry
-  L:{shape:[[0,0,1],[1,1,1]],color:"#ee8822",key:"L"}, // Orange
+  I:{shape:[[1,1,1,1]],color:"#40c8e0",key:"I"},   // Aqua glass
+  O:{shape:[[1,1],[1,1]],color:"#e8c840",key:"O"},  // Amber glass
+  T:{shape:[[0,1,0],[1,1,1]],color:"#b060d8",key:"T"}, // Violet glass
+  S:{shape:[[0,1,1],[1,1,0]],color:"#50c870",key:"S"}, // Mint glass
+  Z:{shape:[[1,1,0],[0,1,1]],color:"#e05068",key:"Z"}, // Rose glass
+  J:{shape:[[1,0,0],[1,1,1]],color:"#5088e0",key:"J"}, // Sapphire glass
+  L:{shape:[[0,0,1],[1,1,1]],color:"#e09040",key:"L"}, // Peach glass
 };
 
-// Yummy candy jello colors — rich, saturated, appetizing, translucent
+// iOS 26 Liquid Glass — frosted translucent tinted glass
 const JELLY_RGBA = {
-  "#22ccee": "rgba(34, 204, 238, 0.62)",   // I — blue raspberry
-  "#eecc22": "rgba(238, 204, 34, 0.62)",   // O — lemon drop
-  "#bb44ee": "rgba(187, 68, 238, 0.62)",   // T — grape
-  "#44dd66": "rgba(68, 221, 102, 0.62)",   // S — green apple
-  "#ee3355": "rgba(238, 51, 85, 0.62)",    // Z — strawberry
-  "#4488ff": "rgba(68, 136, 255, 0.62)",   // J — blueberry
-  "#ee8822": "rgba(238, 136, 34, 0.62)",   // L — orange
+  "#40c8e0": "rgba(64, 200, 224, 0.45)",   // Aqua
+  "#e8c840": "rgba(232, 200, 64, 0.45)",   // Amber
+  "#b060d8": "rgba(176, 96, 216, 0.45)",   // Violet
+  "#50c870": "rgba(80, 200, 112, 0.45)",   // Mint
+  "#e05068": "rgba(224, 80, 104, 0.45)",   // Rose
+  "#5088e0": "rgba(80, 136, 224, 0.45)",   // Sapphire
+  "#e09040": "rgba(224, 144, 64, 0.45)",   // Peach
   // Zen colors
-  "#7ecfcf": "rgba(126, 207, 207, 0.60)",
-  "#f0e68c": "rgba(240, 230, 140, 0.60)",
-  "#c9a0dc": "rgba(201, 160, 220, 0.60)",
-  "#90d5a0": "rgba(144, 213, 160, 0.60)",
-  "#f0a0a0": "rgba(240, 160, 160, 0.60)",
-  "#a0b8e0": "rgba(160, 184, 224, 0.60)",
-  "#f0c090": "rgba(240, 192, 144, 0.60)",
+  "#7ecfcf": "rgba(126, 207, 207, 0.40)",
+  "#f0e68c": "rgba(240, 230, 140, 0.40)",
+  "#c9a0dc": "rgba(201, 160, 220, 0.40)",
+  "#90d5a0": "rgba(144, 213, 160, 0.40)",
+  "#f0a0a0": "rgba(240, 160, 160, 0.40)",
+  "#a0b8e0": "rgba(160, 184, 224, 0.40)",
+  "#f0c090": "rgba(240, 192, 144, 0.40)",
   // Garbage colors
-  "#444455": "rgba(68, 68, 85, 0.55)",
-  "#3a3a4a": "rgba(58, 58, 74, 0.55)",
-  "#505060": "rgba(80, 80, 96, 0.55)",
+  "#444455": "rgba(68, 68, 85, 0.35)",
+  "#3a3a4a": "rgba(58, 58, 74, 0.35)",
+  "#505060": "rgba(80, 80, 96, 0.35)",
 };
 const getJellyColor = (hex) => {
   if (!hex) return "transparent";
@@ -1111,22 +1111,19 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   ) : (
     <>
       <SidePanel title="SCORE">
-        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(14*mFs),fontWeight:700,color:"#00f0f0",textAlign:"center",
-          textShadow:"0 0 10px #00f0f033"}}>{score.toLocaleString()}</div>
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(14*mFs),fontWeight:700,color:"#2a5080",textAlign:"center"}}>{score.toLocaleString()}</div>
       </SidePanel>
       <SidePanel title="LINES">
-        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(12*mFs),fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(12*mFs),fontWeight:700,color:"#4060a0",textAlign:"center"}}>
           {target && challenge.goal === "lines" ? `${lines}/${target}` : lines}
         </div>
       </SidePanel>
       <SidePanel title="LEVEL">
-        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(12*mFs),fontWeight:700,color:"#f0a000",textAlign:"center",
-          textShadow:"0 0 10px #f0a00033"}}>{level}</div>
+        <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(12*mFs),fontWeight:700,color:"#a06020",textAlign:"center"}}>{level}</div>
       </SidePanel>
       {combo > 1 && (
         <SidePanel title="COMBO">
-          <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(14*mFs),fontWeight:900,color:"#f060a0",textAlign:"center",
-            textShadow:"0 0 12px #f060a044"}}>{combo}x</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:Math.round(14*mFs),fontWeight:900,color:"#c04070",textAlign:"center"}}>{combo}x</div>
         </SidePanel>
       )}
     </>
@@ -1159,30 +1156,36 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
   const boardEl = (
     <div style={{
-      position:"relative",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,
-      background:"rgba(0,0,0,0.3)",
-      boxShadow:"0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 80px rgba(100,140,255,0.04)",padding:2,
+      position:"relative",border:"1px solid rgba(255,255,255,0.6)",borderRadius:14,
+      background:"rgba(255,255,255,0.15)",
+      backdropFilter:"blur(20px) saturate(1.2)",WebkitBackdropFilter:"blur(20px) saturate(1.2)",
+      boxShadow:"0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 0.5px rgba(0,0,0,0.05)",padding:2,
       transform:"perspective(800px) rotateX(1.5deg)",transformStyle:"preserve-3d",
       animation: shake ? "boardShake 0.3s ease-out" : isZen ? "zenBoardGlow 4s ease-in-out infinite" : "none",
     }}>
-      {/* SVG Gooey Filter — merges same-color cells into organic jello shapes */}
+      {/* SVG Gooey Filter — merges cells into unified liquid glass shapes */}
       <svg style={{position:'absolute',width:0,height:0}}>
         <defs>
           <filter id="gooey">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-            <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 25 -11" result="goo" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+            <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -14" result="goo" />
             <feComposite in="SourceGraphic" in2="goo" operator="atop" />
           </filter>
         </defs>
       </svg>
 
-      {/* Filtered grid layer — filled cells with gooey filter for organic shapes */}
-      <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,
-        filter:"url(#gooey)",willChange:"filter"}}>
+      {/* Grid lines layer — visible underneath pieces */}
+      <div style={{position:"absolute",top:2,left:2,width:COLS*CELL,height:ROWS*CELL,
+        backgroundImage:`linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)`,
+        backgroundSize:`${CELL}px ${CELL}px`,borderRadius:12,pointerEvents:"none",zIndex:0}} />
+
+      {/* Filtered layer — liquid glass blocks */}
+      <div style={{position:"relative",display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:0,
+        filter:"url(#gooey)",willChange:"filter",zIndex:1}}>
         {filledDisplay.flat().map((cell,i) => {
           const r=Math.floor(i/COLS), c=i%COLS;
           const isFlash=flashRows.includes(r);
-          if(!cell||isFlash) return <div key={i} style={{width:CELL,height:CELL,background:isFlash?"rgba(255,255,255,0.9)":"transparent",animation:isFlash?"flashRow 0.2s ease-out":"none"}} />;
+          if(!cell||isFlash) return <div key={i} style={{width:CELL,height:CELL,background:isFlash?"rgba(255,255,255,0.85)":"transparent",animation:isFlash?"flashRow 0.2s ease-out":"none"}} />;
 
           const jellyBg = getJellyColor(cell);
           const isLanding = lockedCells.has(`${r},${c}`);
@@ -1190,16 +1193,16 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
           return (
             <div key={i} className="jelly-block" style={{
               width:CELL, height:CELL,
-              borderRadius:3,
+              borderRadius:2,
               background:jellyBg,
-              backgroundImage:`linear-gradient(170deg, rgba(255,255,255,0.35) 0%, transparent 45%, rgba(0,0,0,0.1) 100%)`,
+              backdropFilter:"blur(8px) saturate(1.4)",WebkitBackdropFilter:"blur(8px) saturate(1.4)",
+              backgroundImage:`linear-gradient(165deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 30%, transparent 55%, rgba(0,0,0,0.04) 100%)`,
               boxShadow:[
-                `inset 0 ${CELL*0.15}px ${CELL*0.25}px rgba(255,255,255,0.5)`,
-                `inset 0 -${CELL*0.08}px ${CELL*0.15}px rgba(0,0,0,0.2)`,
-                `inset ${CELL*0.06}px 0 ${CELL*0.1}px rgba(255,255,255,0.12)`,
-                `inset -${CELL*0.04}px 0 ${CELL*0.08}px rgba(0,0,0,0.08)`,
-                `0 3px 10px rgba(0,0,0,0.3)`,
-                `0 0 15px ${cell}22`,
+                `inset 0 1px 0 rgba(255,255,255,0.6)`,
+                `inset 0 -1px 0 rgba(0,0,0,0.08)`,
+                `inset 1px 0 0 rgba(255,255,255,0.2)`,
+                `inset -1px 0 0 rgba(0,0,0,0.04)`,
+                `0 2px 8px rgba(0,0,0,0.06)`,
               ].join(','),
               animation: isLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+(i%5)*0.25}s ease-in-out infinite`,
               animationDelay: isLanding ? "0s" : `${(i*0.11)%2.5}s`,
@@ -1208,12 +1211,12 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         })}
       </div>
 
-      {/* Ghost piece layer — faint jello outline, no gooey filter */}
-      <div style={{position:"absolute",top:2,left:2,display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:1,pointerEvents:"none"}}>
+      {/* Ghost piece layer — faint frosted outline */}
+      <div style={{position:"absolute",top:2,left:2,display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:0,pointerEvents:"none",zIndex:2}}>
         {ghostDisplay.flat().map((cell,i) => {
           if(!cell) return <div key={i} style={{width:CELL,height:CELL}} />;
           const bc = cell.slice(0,7);
-          return <div key={i} style={{width:CELL,height:CELL,borderRadius:3,background:`${bc}12`,boxShadow:`inset 0 0 ${CELL*0.3}px ${bc}15, 0 0 ${CELL*0.2}px ${bc}08`,border:`1px solid ${bc}20`}} />;
+          return <div key={i} style={{width:CELL,height:CELL,borderRadius:2,background:`${bc}10`,border:`1px solid ${bc}18`,boxShadow:`inset 0 1px 0 rgba(255,255,255,0.15)`}} />;
         })}
       </div>
 
@@ -1262,7 +1265,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
       justifyContent:isMobile?"flex-start":"center",
-      background:"linear-gradient(160deg, #1a1028 0%, #0f1a2a 40%, #0a1520 70%, #101018 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
+      background:"linear-gradient(160deg, #e8ecf2 0%, #d8dce8 30%, #c8cee0 60%, #dde0ea 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
       color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:isMobile?"6px 4px":"12px 8px",
       touchAction:"none",WebkitTouchCallout:"none"}}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -1275,11 +1278,11 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes labelFloat{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}60%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(1.15)}}
         @keyframes boardShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
         @keyframes jelloLand{0%{transform:scaleY(0.55) scaleX(1.3)}12%{transform:scaleY(1.2) scaleX(0.82)}24%{transform:scaleY(0.88) scaleX(1.1)}36%{transform:scaleY(1.08) scaleX(0.94)}50%{transform:scaleY(0.96) scaleX(1.03)}65%{transform:scaleY(1.02) scaleX(0.99)}100%{transform:scaleY(1) scaleX(1)}}
-        @keyframes jellyLand{0%{transform:scaleY(0.45) scaleX(1.35)}10%{transform:scaleY(1.3) scaleX(0.75)}22%{transform:scaleY(0.82) scaleX(1.15)}34%{transform:scaleY(1.12) scaleX(0.9)}46%{transform:scaleY(0.93) scaleX(1.06)}58%{transform:scaleY(1.05) scaleX(0.96)}70%{transform:scaleY(0.98) scaleX(1.02)}85%{transform:scaleY(1.01) scaleX(0.99)}100%{transform:scaleY(1) scaleX(1)}}
-        @keyframes jelloBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.006,0.994)}}
-        .jelly-block{position:relative;backdrop-filter:blur(0.5px)}
-        .jelly-block:hover{transform:scale(1.05)!important;filter:brightness(1.12) saturate(1.1);z-index:2}
-        .jelly-block:active{transform:scaleY(0.78) scaleX(1.18)!important;filter:brightness(1.15);z-index:2;transition:transform 0.04s!important}
+        @keyframes jellyLand{0%{transform:scaleY(0.5) scaleX(1.3)}12%{transform:scaleY(1.22) scaleX(0.82)}24%{transform:scaleY(0.86) scaleX(1.12)}36%{transform:scaleY(1.08) scaleX(0.94)}50%{transform:scaleY(0.96) scaleX(1.03)}65%{transform:scaleY(1.02) scaleX(0.99)}100%{transform:scaleY(1) scaleX(1)}}
+        @keyframes jelloBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.005,0.995)}}
+        .jelly-block{position:relative;transition:transform 0.12s cubic-bezier(0.34,1.56,0.64,1)}
+        .jelly-block:hover{transform:scale(1.04)!important;filter:brightness(1.06);z-index:3}
+        .jelly-block:active{transform:scaleY(0.82) scaleX(1.14)!important;z-index:3;transition:transform 0.04s!important}
         @keyframes zenFloat{0%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-40px) scale(1.3);opacity:0.6}100%{transform:translateY(0) scale(1);opacity:0.3}}
         @keyframes zenBoardGlow{0%,100%{box-shadow:0 0 20px rgba(100,150,200,0.15),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 40px rgba(100,150,200,0.3),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}}
         .menu-btn:hover{color:rgba(40,60,90,0.9)!important;border-color:rgba(255,255,255,0.6)!important}
