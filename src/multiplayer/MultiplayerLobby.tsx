@@ -30,6 +30,18 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
     }
   }, []);
 
+  // Escape key to go back
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        peerManager.disconnect();
+        onBack?.();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onBack, peerManager]);
+
   // Set up peer manager callbacks
   useEffect(() => {
     peerManager.onConnected = () => {

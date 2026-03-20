@@ -300,6 +300,8 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
   /* ---- Match result ---- */
   const [matchResult, setMatchResult] = useState(null); // 'win' | 'lose' | null
   const [disconnected, setDisconnected] = useState(false);
+  const [rematchSent, setRematchSent] = useState(false);
+  const [rematchReceived, setRematchReceived] = useState(false);
 
   /* ---- Garbage queue ---- */
   const garbageQueue = useRef(0);
@@ -342,6 +344,50 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
   lastWasTetrisRef.current = lastWasTetris;
   maxComboRef.current = maxCombo;
   matchResultRef.current = matchResult;
+
+  const rematchSentRef = useRef(false);
+  const rematchReceivedRef = useRef(false);
+  rematchSentRef.current = rematchSent;
+  rematchReceivedRef.current = rematchReceived;
+
+  /* ---- Reset all game state for rematch ---- */
+  const resetGame = useCallback(() => {
+    setBoard(createBoard());
+    setCurrent(null);
+    setPos({r:0, c:0});
+    setScore(0);
+    setLines(0);
+    setLevel(0);
+    setGameOver(false);
+    setPaused(false);
+    setFlashRows([]);
+    setStarted(false);
+    setCountdown(3);
+    setHoldKey(null);
+    setHoldUsed(false);
+    setPreviewKeys([]);
+    setCombo(0);
+    setMaxCombo(0);
+    setLastWasTetris(false);
+    setActionLabels([]);
+    setShake(false);
+    setOpBoard(createBoard());
+    setOpScore(0);
+    setOpLines(0);
+    setOpLevel(0);
+    setMatchResult(null);
+    setDisconnected(false);
+    setRematchSent(false);
+    setRematchReceived(false);
+    garbageQueue.current = 0;
+    prevLevel.current = 0;
+    comboRef.current = 0;
+    lastWasTetrisRef.current = false;
+    maxComboRef.current = 0;
+    lockMovesRef.current = 0;
+    matchResultRef.current = null;
+    sendBoardThrottleRef.current = 0;
+  }, []);
 
   const doLockRef = useRef(null);
 
@@ -435,6 +481,14 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
           audio.playWin();
         }
       }
+      if (msg.type === 'rematch') {
+        if (rematchSentRef.current) {
+          // Both players want rematch — restart
+          resetGame();
+        } else {
+          setRematchReceived(true);
+        }
+      }
     };
 
     peerManager.onDisconnected = () => {
@@ -448,7 +502,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
       peerManager.onMessage = null;
       peerManager.onDisconnected = null;
     };
-  }, [peerManager, audio]);
+  }, [peerManager, audio, resetGame]);
 
   /* ---- Countdown ---- */
   useEffect(() => {
@@ -477,13 +531,6 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
     clearLockTimer();
     lockMovesRef.current = 0;
 
-    // Apply pending garbage before spawning
-    if (garbageQueue.current > 0) {
-      const gc = garbageQueue.current;
-      garbageQueue.current = 0;
-      applyGarbage(gc);
-    }
-
     const key = dequeue();
     setPreviewKeys(peek());
     const p = PIECES[key];
@@ -500,6 +547,14 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
     setCurrent({shape:p.shape, color:p.color, key});
     setPos({r:0, c:sc});
     setHoldUsed(false);
+
+    // Apply pending garbage AFTER spawning so the player sees the new piece first
+    if (garbageQueue.current > 0) {
+      const gc = garbageQueue.current;
+      garbageQueue.current = 0;
+      // Brief delay so the piece appears before garbage pushes the board up
+      setTimeout(() => applyGarbage(gc), 100);
+    }
   }, [dequeue, peek, clearLockTimer, applyGarbage, audio, peerManager]);
 
   /* ---- Lock piece ---- */
@@ -889,14 +944,54 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
         </div>
       )}
 
-      <button onClick={() => { peerManager.disconnect(); onBack(); }} style={{
-        fontFamily:"'Orbitron'", fontSize:14, fontWeight:700, letterSpacing:3,
-        padding:'12px 36px', border:'2px solid #667eea', borderRadius:8,
-        background:'#667eea12', color:'#667eea', cursor:'pointer',
-        transition:'all 0.2s',
-      }}>
-        BACK TO MENU
-      </button>
+      <div style={{display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center'}}>
+        {!disconnected && (
+          <button onClick={() => {
+            if (!rematchSent) {
+              setRematchSent(true);
+              peerManager.send({ type: 'rematch' });
+              if (rematchReceived) {
+                // Opponent already requested rematch, restart now
+                resetGame();
+              }
+            }
+          }} disabled={rematchSent} style={{
+            fontFamily:"'Orbitron'", fontSize:14, fontWeight:700, letterSpacing:3,
+            padding:'12px 36px', border:'2px solid #00f040', borderRadius:8,
+            background: rematchSent ? '#00f04008' : '#00f04012',
+            color: rematchSent ? '#00f04066' : '#00f040', cursor: rematchSent ? 'default' : 'pointer',
+            transition:'all 0.2s',
+          }}>
+            {rematchSent
+              ? (rematchReceived ? 'STARTING...' : 'WAITING...')
+              : (rematchReceived ? 'ACCEPT REMATCH' : 'REMATCH')}
+          </button>
+        )}
+        <button onClick={() => { peerManager.disconnect(); onBack(); }} style={{
+          fontFamily:"'Orbitron'", fontSize:14, fontWeight:700, letterSpacing:3,
+          padding:'12px 36px', border:'2px solid #667eea', borderRadius:8,
+          background:'#667eea12', color:'#667eea', cursor:'pointer',
+          transition:'all 0.2s',
+        }}>
+          BACK TO MENU
+        </button>
+      </div>
+
+      {rematchReceived && !rematchSent && (
+        <div style={{
+          fontFamily:"'Orbitron'", fontSize:10, color:'#00f040', letterSpacing:2, marginTop:12,
+          textShadow:'0 0 8px #00f04044',
+        }}>
+          OPPONENT WANTS A REMATCH!
+        </div>
+      )}
+      {rematchSent && !rematchReceived && (
+        <div style={{
+          fontFamily:"'Orbitron'", fontSize:10, color:'#444', letterSpacing:2, marginTop:12,
+        }}>
+          WAITING FOR OPPONENT...
+        </div>
+      )}
     </div>
   );
 

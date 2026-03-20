@@ -215,9 +215,11 @@ class App {
     // Hide the Three.js canvas
     this.canvas.style.display = 'none';
 
+    // Clean up any old connection, reuse the existing PeerManager
+    this.peerManager.disconnect();
+
     // Show the multiplayer container and mount React lobby
     this.multiplayerRoot.style.display = '';
-    this.peerManager = new PeerManager();
     this.multiplayerReactRoot = createRoot(this.multiplayerRoot);
     this.renderMultiplayerLobby(roomCode);
   }

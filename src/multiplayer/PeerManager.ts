@@ -7,7 +7,8 @@ export type PeerMessage =
   | { type: 'game_over'; score: number }
   | { type: 'start' }
   | { type: 'alias'; name: string }
-  | { type: 'ready' };
+  | { type: 'ready' }
+  | { type: 'rematch' };
 
 export class PeerManager {
   private peer: Peer | null = null;
@@ -66,34 +67,49 @@ export class PeerManager {
     this._isHost = false;
 
     return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.peer?.destroy();
+        reject(new Error('Room not found or connection timed out'));
+      }, 10000);
+
       this.peer = new Peer();
 
       this.peer.on('open', () => {
         const peerId = `tetris-${this.roomCode}`;
         this.conn = this.peer!.connect(peerId, { reliable: true });
-        this.setupConnection(alias);
 
         this.conn.on('open', () => {
+          clearTimeout(timeout);
+          this.setupConnection(alias);
           resolve();
         });
 
         this.conn.on('error', (err: any) => {
+          clearTimeout(timeout);
           reject(err);
         });
       });
 
       this.peer.on('error', (err) => {
+        clearTimeout(timeout);
         reject(err);
       });
     });
   }
 
   private setupConnection(myAlias: string): void {
-    this.conn.on('open', () => {
+    if (this.conn.open) {
+      // Already open (joinRoom case)
       this._isConnected = true;
       this.send({ type: 'alias', name: myAlias });
       this.onConnected?.();
-    });
+    } else {
+      this.conn.on('open', () => {
+        this._isConnected = true;
+        this.send({ type: 'alias', name: myAlias });
+        this.onConnected?.();
+      });
+    }
 
     this.conn.on('data', (data: PeerMessage) => {
       if (data.type === 'alias') {
