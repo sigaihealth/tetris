@@ -3,7 +3,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const COLS = 10;
 const ROWS = 20;
-const getCellSize = () => Math.min(28, Math.floor((window.innerWidth - 20) / (COLS + 1)));
+const getCellSize = () => {
+  const maxByWidth = Math.floor((window.innerWidth - 320) / (COLS + 1)); // leave room for side panels
+  const maxByHeight = Math.floor((window.innerHeight - 140) / (ROWS + 1)); // leave room for header/footer
+  const mobile = window.innerWidth < 600;
+  if (mobile) return Math.min(28, Math.floor((window.innerWidth - 20) / (COLS + 1)));
+  return Math.max(24, Math.min(42, maxByWidth, maxByHeight)); // 24-42px range for desktop
+};
 const getIsMobile = () => window.innerWidth < 600;
 const DROP_SPEEDS = [800,720,630,550,470,380,300,220,140,100,80,60,50,40,30];
 const PREVIEW_COUNT = 3;
@@ -1154,26 +1160,25 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
   const boardEl = (
     <div style={{
-      position:"relative",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,
-      background:"linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
-      backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",
-      boxShadow:"0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.2), 0 0 60px rgba(80,120,200,0.04)",padding:2,
-      transform:"perspective(600px) rotateX(1deg)",transformStyle:"preserve-3d",
+      position:"relative",border:"1px solid rgba(255,255,255,0.1)",borderRadius:14,
+      background:"linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",
+      backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",
+      boxShadow:"0 12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 80px rgba(80,120,200,0.03)",padding:3,
       animation: shake ? "boardShake 0.3s ease-out" : isZen ? "zenBoardGlow 4s ease-in-out infinite" : "none",
     }}>
-      {/* SVG filter to soften block edges slightly */}
+      {/* SVG filter — very subtle edge softening for organic feel */}
       <svg style={{position:'absolute',width:0,height:0}}>
         <defs>
           <filter id="soften">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.4" />
           </filter>
         </defs>
       </svg>
 
-      {/* Grid lines — subtle glass etching */}
-      <div style={{position:"absolute",top:2,left:2,width:COLS*CELL,height:ROWS*CELL,
-        backgroundImage:`linear-gradient(rgba(100,150,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(100,150,255,0.06) 1px, transparent 1px)`,
-        backgroundSize:`${CELL}px ${CELL}px`,borderRadius:10,pointerEvents:"none",zIndex:0}} />
+      {/* Grid lines — fine hairline etching */}
+      <div style={{position:"absolute",top:3,left:3,width:COLS*CELL,height:ROWS*CELL,
+        backgroundImage:`linear-gradient(rgba(140,170,220,0.05) 0.5px, transparent 0.5px), linear-gradient(90deg, rgba(140,170,220,0.05) 0.5px, transparent 0.5px)`,
+        backgroundSize:`${CELL}px ${CELL}px`,borderRadius:12,pointerEvents:"none",zIndex:0}} />
 
       {/* Blocks — ONE div per connected group, softened edges */}
       <div style={{position:"relative",width:COLS*CELL,height:ROWS*CELL,zIndex:1,filter:"url(#soften)"}}>
@@ -1290,9 +1295,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
             // Simplest: use an SVG mask or just stack cell-sized divs with no borders.
 
             // Mask each cell with slightly oversized rounded rects that overlap neighbors
-            // This creates a unified shape with soft rounded edges everywhere
-            const P = 3; // padding — cells extend slightly beyond their grid bounds
-            const CR = 8; // corner radius for each cell mask
+            const P = Math.round(CELL * 0.1); // padding proportional to cell size
+            const CR = Math.round(CELL * 0.25); // corner radius — nicely rounded
 
             return (
               <div key={`g${gi}`} className="jelly-block" style={{
@@ -1303,33 +1307,35 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
                 WebkitMaskSize:"100% 100%",
                 maskImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${gW+P*2}' height='${gH+P*2}'>${g.cells.map(([r,c])=>`<rect x='${(c-g.minC)*CELL}' y='${(r-g.minR)*CELL}' width='${CELL+P*2}' height='${CELL+P*2}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`,
                 maskSize:"100% 100%",
-                // 3D liquid glass — bright specular, deep depth, inner glow
+                // Premium 3D liquid glass
                 backgroundImage:[
-                  // Sharp specular highlight — bright white spot like light on glass
-                  `radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) ${Math.max(gW,gH)*0.2}px, transparent ${Math.max(gW,gH)*0.45}px)`,
-                  // Secondary softer highlight for volume
-                  `radial-gradient(ellipse at 65% 80%, rgba(255,255,255,0.15) 0%, transparent ${Math.max(gW,gH)*0.4}px)`,
-                  // Depth gradient — light top to dark bottom
-                  `linear-gradient(175deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 20%, transparent 45%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.22) 100%)`,
+                  // Primary specular — crisp bright highlight
+                  `radial-gradient(ellipse 60% 50% at 30% 15%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.05) 60%, transparent 80%)`,
+                  // Rim light — subtle secondary catchlight on opposite side
+                  `radial-gradient(ellipse 40% 30% at 75% 85%, rgba(255,255,255,0.18) 0%, transparent 70%)`,
+                  // Environment reflection — very subtle wide glow
+                  `radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%)`,
+                  // Depth gradient — smooth top to bottom
+                  `linear-gradient(178deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.12) 15%, rgba(255,255,255,0.03) 35%, transparent 50%, rgba(0,0,0,0.05) 65%, rgba(0,0,0,0.12) 80%, rgba(0,0,0,0.2) 100%)`,
                 ].join(','),
                 boxShadow:[
-                  // Top bevel — bright white edge like light catching the rim
-                  `inset 0 4px 8px rgba(255,255,255,0.65)`,
-                  // Bottom shadow — deep underside
-                  `inset 0 -3px 8px rgba(0,0,0,0.25)`,
+                  // Top bevel — crisp bright rim
+                  `inset 0 ${Math.round(CELL*0.12)}px ${Math.round(CELL*0.2)}px rgba(255,255,255,0.6)`,
+                  // Bottom underside shadow
+                  `inset 0 -${Math.round(CELL*0.08)}px ${Math.round(CELL*0.18)}px rgba(0,0,0,0.22)`,
                   // Left bevel
-                  `inset 4px 0 6px rgba(255,255,255,0.25)`,
+                  `inset ${Math.round(CELL*0.1)}px 0 ${Math.round(CELL*0.15)}px rgba(255,255,255,0.22)`,
                   // Right shadow
-                  `inset -3px 0 6px rgba(0,0,0,0.15)`,
-                  // Inner color glow — glowing from within
-                  `inset 0 0 ${Math.max(gW,gH)*0.4}px ${g.color}35`,
-                  // 3D lift shadow — piece floats above the board
-                  `0 6px 20px rgba(0,0,0,0.4)`,
-                  `0 2px 6px rgba(0,0,0,0.25)`,
-                  // Color glow halo
-                  `0 0 28px ${g.color}30`,
+                  `inset -${Math.round(CELL*0.06)}px 0 ${Math.round(CELL*0.12)}px rgba(0,0,0,0.12)`,
+                  // Inner color glow
+                  `inset 0 0 ${Math.round(Math.max(gW,gH)*0.35)}px ${g.color}30`,
+                  // 3D float shadow
+                  `0 ${Math.round(CELL*0.2)}px ${Math.round(CELL*0.5)}px rgba(0,0,0,0.4)`,
+                  `0 ${Math.round(CELL*0.06)}px ${Math.round(CELL*0.12)}px rgba(0,0,0,0.2)`,
+                  // Color halo
+                  `0 0 ${Math.round(CELL*0.7)}px ${g.color}20`,
                 ].join(','),
-                borderRadius:10,
+                borderRadius:Math.round(CELL*0.22),
                 animation: hasLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+(gi%5)*0.25}s ease-in-out infinite`,
                 animationDelay: hasLanding ? "0s" : `${(gi*0.3)%2.5}s`,
               }} />
@@ -1393,7 +1399,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
       justifyContent:isMobile?"flex-start":"center",
-      background:"linear-gradient(160deg, #0e1420 0%, #141c2c 30%, #101828 60%, #0c1220 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
+      background:"radial-gradient(ellipse at 50% 30%, #1a2238 0%, #0e1524 50%, #080c16 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
       color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:isMobile?"6px 4px":"12px 8px",
       touchAction:"none",WebkitTouchCallout:"none"}}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -1574,8 +1580,8 @@ function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
 
 function SidePanel({title, children, highlight}) {
   return (
-    <div style={{background:"rgba(255,255,255,0.05)",border:`1px solid ${highlight?"rgba(100,200,255,0.2)":"rgba(255,255,255,0.08)"}`,borderRadius:8,padding:"8px 10px",transition:"border-color 0.3s",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}>
-      <div style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:3,color:"rgba(160,180,210,0.6)",marginBottom:5,textAlign:"center"}}>{title}</div>
+    <div style={{background:"rgba(255,255,255,0.04)",border:`1px solid ${highlight?"rgba(100,200,255,0.15)":"rgba(255,255,255,0.06)"}`,borderRadius:10,padding:"10px 12px",transition:"border-color 0.3s",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)"}}>
+      <div style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:600,letterSpacing:4,color:"rgba(160,180,210,0.5)",marginBottom:6,textAlign:"center",textTransform:"uppercase"}}>{title}</div>
       {children}
     </div>
   );
@@ -1584,9 +1590,9 @@ function SidePanel({title, children, highlight}) {
 function CtrlBtn({label, onClick, wide}) {
   return (
     <button onClick={onClick} style={{
-      fontFamily:"'Orbitron'",fontSize:wide?9:13,fontWeight:700,
-      width:wide?78:34,height:30,border:"1px solid rgba(255,255,255,0.1)",borderRadius:5,
-      background:"rgba(255,255,255,0.06)",color:"rgba(180,200,230,0.7)",cursor:"pointer",
+      fontFamily:"'Orbitron'",fontSize:wide?9:13,fontWeight:600,
+      width:wide?82:38,height:34,border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,
+      background:"rgba(255,255,255,0.04)",color:"rgba(180,200,230,0.65)",cursor:"pointer",
       display:"flex",alignItems:"center",justifyContent:"center",letterSpacing:wide?1:0,
       backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",
     }}>{label}</button>
