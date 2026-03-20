@@ -14,10 +14,10 @@ export class SceneManager {
   constructor(canvas: HTMLCanvasElement) {
     // Scene — lighter blue-gray background for a refreshing look
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1e2e);
+    this.scene.background = new THREE.Color(0x2a3048);
 
     // Subtle fog for depth
-    this.scene.fog = new THREE.FogExp2(0x1a1e2e, 0.02);
+    this.scene.fog = new THREE.FogExp2(0x2a3048, 0.02);
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(
@@ -68,7 +68,7 @@ export class SceneManager {
     // Environment map for glass reflections — brighter
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     const envScene = new THREE.Scene();
-    envScene.background = new THREE.Color(0x2a3050);
+    envScene.background = new THREE.Color(0x3a4060);
     const envTexture = pmremGenerator.fromScene(envScene).texture;
     this.scene.environment = envTexture;
     pmremGenerator.dispose();

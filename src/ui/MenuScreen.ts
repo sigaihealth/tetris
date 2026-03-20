@@ -74,7 +74,7 @@ export class MenuScreen {
   private content: HTMLElement;
   private callbacks: MenuCallbacks;
   private selectedSize: WellSize = 'medium';
-  private selectedMode: GameMode = '3d';
+  private selectedMode: GameMode = '2d';
   private nameInputEl: HTMLInputElement | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 

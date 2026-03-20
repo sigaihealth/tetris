@@ -6,7 +6,7 @@
 
 body {
   overflow: hidden;
-  background: #1a1e2e;
+  background: #2a3048;
   font-family: 'Courier New', monospace;
   color: #e0e0f0;
 }
@@ -85,7 +85,7 @@ canvas {
 #menu-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(5, 5, 15, 0.85);
+  background: rgba(30, 35, 55, 0.85);
   backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
