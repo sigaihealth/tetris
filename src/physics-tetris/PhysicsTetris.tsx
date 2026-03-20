@@ -98,9 +98,9 @@ function createPiece(type: string, x: number, y: number, cellSize: number) {
   const body = Body.create({
     parts,
     restitution: 0.02,       // almost no bounce
-    friction: 0.8,            // grip surfaces well
-    frictionStatic: 1.2,      // very hard to slide once stopped
-    frictionAir: 0.08,        // air drag slows movement
+    friction: 0.05,           // very low — pieces slide off walls and each other's sides
+    frictionStatic: 0.05,     // near zero — nothing sticks to sides
+    frictionAir: 0.06,        // air drag slows movement
   });
   Body.setInertia(body, body.inertia * 5); // HIGH inertia = strongly resists toppling
   body.pieceType = type;
@@ -263,7 +263,7 @@ export default function PhysicsTetris() {
     const floor = Bodies.rectangle(
       offsetX + chamberW / 2, offsetY + chamberH + wallThickness / 2,
       chamberW + wallThickness * 2, wallThickness,
-      { isStatic: true, label: 'wall', friction: 0.6, frictionStatic: 0.8 }, // floor has normal grip
+      { isStatic: true, label: 'wall', friction: 1.0, frictionStatic: 1.5 }, // floor has high grip to hold pieces
     );
 
     Composite.add(engine.world, [leftWall, rightWall, floor]);
