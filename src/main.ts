@@ -4,6 +4,9 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import Tetris2D from './tetris2d/Tetris2D.js';
+import MultiplayerLobby from './multiplayer/MultiplayerLobby.js';
+import MultiplayerGame from './multiplayer/MultiplayerGame.js';
+import { PeerManager } from './multiplayer/PeerManager.js';
 
 import { GameState, WELL_PRESETS } from './game/GameState.js';
 import type { GameEvent, Axis } from './game/GameState.js';
@@ -21,7 +24,7 @@ import { MenuScreen } from './ui/MenuScreen.js';
 import type { WellSize } from './ui/MenuScreen.js';
 import { Leaderboard } from './ui/Leaderboard.js';
 
-type AppState = 'menu' | 'playing' | 'paused' | 'gameover' | 'playing2d';
+type AppState = 'menu' | 'playing' | 'paused' | 'gameover' | 'playing2d' | 'multiplayer';
 
 class App {
   private state: AppState = 'menu';
@@ -48,6 +51,11 @@ class App {
   private tetris2dRoot: HTMLElement;
   private reactRoot: Root | null = null;
 
+  // Multiplayer
+  private multiplayerRoot: HTMLElement;
+  private multiplayerReactRoot: Root | null = null;
+  private peerManager: PeerManager = new PeerManager();
+
   // Timing
   private lastTime = 0;
   private gravityAccum = 0;
@@ -60,6 +68,12 @@ class App {
     this.tetris2dRoot.id = 'tetris-2d-root';
     this.tetris2dRoot.style.display = 'none';
     document.body.appendChild(this.tetris2dRoot);
+
+    // Create multiplayer container
+    this.multiplayerRoot = document.createElement('div');
+    this.multiplayerRoot.id = 'multiplayer-root';
+    this.multiplayerRoot.style.display = 'none';
+    document.body.appendChild(this.multiplayerRoot);
 
     // Renderer
     this.sceneManager = new SceneManager(this.canvas);
@@ -77,6 +91,7 @@ class App {
     this.menu = new MenuScreen({
       onStart: (size: WellSize) => this.startGame(size),
       onStart2D: () => this.start2D(),
+      onMultiplayer: () => this.startMultiplayer(),
       onResume: () => this.unpause(),
       onRestart: () => this.startGame(this.currentSize),
       onQuit: () => this.quitToMenu(),
@@ -92,7 +107,15 @@ class App {
 
     // Initial state
     this.hud.hide();
-    this.menu.showStartScreen();
+
+    // Check URL for room code
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCodeFromUrl = urlParams.get('room');
+    if (roomCodeFromUrl && roomCodeFromUrl.length >= 4) {
+      this.startMultiplayer(roomCodeFromUrl.toUpperCase());
+    } else {
+      this.menu.showStartScreen();
+    }
 
     // Event listeners
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
@@ -171,6 +194,66 @@ class App {
     this.menu.showStartScreen();
   }
 
+  private startMultiplayer(roomCode?: string): void {
+    this.state = 'multiplayer';
+    this.menu.hide();
+    this.hud.hide();
+
+    // Hide the Three.js canvas
+    this.canvas.style.display = 'none';
+
+    // Show the multiplayer container and mount React lobby
+    this.multiplayerRoot.style.display = '';
+    this.peerManager = new PeerManager();
+    this.multiplayerReactRoot = createRoot(this.multiplayerRoot);
+    this.renderMultiplayerLobby(roomCode);
+  }
+
+  private renderMultiplayerLobby(roomCode?: string): void {
+    this.multiplayerReactRoot?.render(
+      createElement(MultiplayerLobby, {
+        peerManager: this.peerManager,
+        initialRoomCode: roomCode,
+        onGameStart: () => this.renderMultiplayerGame(),
+        onBack: () => this.quitMultiplayer(),
+      }),
+    );
+  }
+
+  private renderMultiplayerGame(): void {
+    this.multiplayerReactRoot?.render(
+      createElement(MultiplayerGame, {
+        peerManager: this.peerManager,
+        onBack: () => this.quitMultiplayer(),
+      }),
+    );
+  }
+
+  private quitMultiplayer(): void {
+    // Clean up URL query param
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('room')) {
+      url.searchParams.delete('room');
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    // Disconnect peer
+    this.peerManager.disconnect();
+
+    // Unmount React
+    if (this.multiplayerReactRoot) {
+      this.multiplayerReactRoot.unmount();
+      this.multiplayerReactRoot = null;
+    }
+
+    // Hide multiplayer, show 3D canvas
+    this.multiplayerRoot.style.display = 'none';
+    this.canvas.style.display = '';
+
+    this.state = 'menu';
+    this.menu.showStartScreen();
+  }
+
   private onKeyDown(e: KeyboardEvent): void {
     if (e.repeat) return;
 
@@ -179,6 +262,11 @@ class App {
       if (e.key === 'Escape') {
         this.quit2D();
       }
+      return;
+    }
+
+    // In multiplayer mode, Escape is handled by the React components
+    if (this.state === 'multiplayer') {
       return;
     }
 

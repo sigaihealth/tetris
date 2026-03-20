@@ -5,6 +5,7 @@ export type GameMode = '3d' | '2d';
 export interface MenuCallbacks {
   onStart: (size: WellSize) => void;
   onStart2D: () => void;
+  onMultiplayer: () => void;
   onResume: () => void;
   onRestart: () => void;
   onQuit: () => void;
@@ -192,6 +193,10 @@ export class MenuScreen {
 
     this.content.appendChild(
       btn('menu-btn primary', 'START GAME', startAction),
+    );
+
+    this.content.appendChild(
+      btn('menu-btn', 'MULTIPLAYER', () => this.callbacks.onMultiplayer()),
     );
 
     // Controls reference
