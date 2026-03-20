@@ -886,6 +886,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       audio.playMove();
     }
   }, [touchLock, audio]);
+  const moveRef = useRef(move);
+  moveRef.current = move;
 
   const rotatePiece = useCallback(() => {
     if (!currentRef.current || pausedRef.current) return;
@@ -932,11 +934,19 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   const startDas = useCallback((dir) => {
     stopDas();
     dasDir.current = dir;
-    move(dir);
+    moveRef.current(dir);
     dasTimer.current = setTimeout(() => {
-      dasRepeat.current = setInterval(() => move(dir), DAS_RATE);
+      dasRepeat.current = setInterval(() => moveRef.current(dir), DAS_RATE);
     }, DAS_DELAY);
-  }, [move, stopDas]);
+  }, [stopDas]);
+
+  // Stable refs for keyboard handler — prevents effect re-registration from killing DAS
+  const dropRef = useRef(drop); dropRef.current = drop;
+  const rotateRef = useRef(rotatePiece); rotateRef.current = rotatePiece;
+  const hardDropRef = useRef(hardDrop); hardDropRef.current = hardDrop;
+  const holdRef = useRef(holdPiece); holdRef.current = holdPiece;
+  const startDasRef = useRef(startDas); startDasRef.current = startDas;
+  const stopDasRef = useRef(stopDas); stopDasRef.current = stopDas;
 
   // Keyboard
   useEffect(() => {
@@ -946,22 +956,22 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       if (paused) return;
       if (e.repeat) return;
       switch (e.key) {
-        case "ArrowLeft": e.preventDefault(); startDas(-1); break;
-        case "ArrowRight": e.preventDefault(); startDas(1); break;
-        case "ArrowDown": e.preventDefault(); drop(); break;
-        case "ArrowUp": e.preventDefault(); rotatePiece(); break;
-        case " ": e.preventDefault(); hardDrop(); break;
-        case "c": case "C": case "Shift": e.preventDefault(); holdPiece(); break;
+        case "ArrowLeft": e.preventDefault(); startDasRef.current(-1); break;
+        case "ArrowRight": e.preventDefault(); startDasRef.current(1); break;
+        case "ArrowDown": e.preventDefault(); dropRef.current(); break;
+        case "ArrowUp": e.preventDefault(); rotateRef.current(); break;
+        case " ": e.preventDefault(); hardDropRef.current(); break;
+        case "c": case "C": case "Shift": e.preventDefault(); holdRef.current(); break;
       }
     };
     const up = (e) => {
-      if (e.key === "ArrowLeft" && dasDir.current === -1) stopDas();
-      if (e.key === "ArrowRight" && dasDir.current === 1) stopDas();
+      if (e.key === "ArrowLeft" && dasDir.current === -1) stopDasRef.current();
+      if (e.key === "ArrowRight" && dasDir.current === 1) stopDasRef.current();
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); stopDas(); };
-  }, [started, gameOver, paused, startDas, stopDas, drop, rotatePiece, hardDrop, holdPiece]);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); stopDasRef.current(); };
+  }, [started, gameOver, paused]);
 
   // Soft drop hold (disabled in zen mode — zen uses single-press drop only)
   useEffect(() => {
