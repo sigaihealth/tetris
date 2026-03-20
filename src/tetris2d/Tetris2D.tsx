@@ -427,29 +427,31 @@ function useAudio() {
 function MiniGrid({shape, color, size=14, dimmed=false}) {
   if (!shape) return <div style={{width:size*4,height:size*2,minHeight:size*2}} />;
   const rows = shape.length, cols = shape[0].length;
-  // Bounding box of filled cells
-  let minR=rows,maxR=0,minC=cols,maxC=0;
-  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) if(shape[r][c]){
-    if(r<minR)minR=r; if(r>maxR)maxR=r; if(c<minC)minC=c; if(c>maxC)maxC=c;
-  }
-  const gW=(maxC-minC+1)*size, gH=(maxR-minR+1)*size;
+  const cells = [];
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) if(shape[r][c]) cells.push([r,c]);
+  if(!cells.length) return <div style={{width:size*cols,height:size*rows}} />;
+  const gW=cols*size, gH=rows*size;
+  const jellyColor = getJellyColor(color) || `${color}cc`;
   return (
-    <div style={{display:"grid",gridTemplateColumns:`repeat(${cols},${size}px)`,gap:0,opacity:dimmed?0.3:1,transition:"opacity 0.2s"}}>
-      {shape.flat().map((v,i) => {
-        if (!v) return <div key={i} style={{width:size,height:size}} />;
-        const r=Math.floor(i/cols), c=i%cols;
-        const up=r>0&&shape[r-1][c], dn=r<rows-1&&shape[r+1][c];
-        const lt=c>0&&shape[r][c-1], rt=c<cols-1&&shape[r][c+1];
-        const offX=(c-minC)*size, offY=(r-minR)*size;
-        return <div key={i} style={{width:size,height:size,
-          borderRadius:`${!up&&!lt?2:0}px ${!up&&!rt?2:0}px ${!dn&&!rt?2:0}px ${!dn&&!lt?2:0}px`,
-          backgroundColor:`${color}cc`,
-          backgroundImage:`radial-gradient(ellipse at ${(0.3*gW-offX)}px ${(0.2*gH-offY)}px, rgba(255,255,255,0.5) 0%, transparent ${Math.max(gW,gH)*0.6}px), linear-gradient(180deg, rgba(255,255,255,0.1), transparent 40%, rgba(0,0,0,0.06))`,
-          backgroundSize:`${gW}px ${gH}px, ${gW}px ${gH}px`,
-          backgroundPosition:`${-offX}px ${-offY}px, ${-offX}px ${-offY}px`,
-          boxShadow:[!up?`inset 0 1px 0 rgba(255,255,255,0.35)`:'',!dn?`inset 0 -1px 0 rgba(0,0,0,0.12)`:''].filter(Boolean).join(','),
-        }} />;
-      })}
+    <div style={{position:"relative",width:gW,height:gH,opacity:dimmed?0.3:1,transition:"opacity 0.2s"}}>
+      <div style={{
+        position:"absolute",inset:0,
+        background:jellyColor,
+        backgroundImage:[
+          `radial-gradient(ellipse at 25% 18%, rgba(255,255,255,0.65) 0%, transparent ${Math.max(gW,gH)*0.5}px)`,
+          `linear-gradient(175deg, rgba(255,255,255,0.3) 0%, transparent 45%, rgba(0,0,0,0.12) 100%)`,
+        ].join(','),
+        boxShadow:`inset 0 2px 3px rgba(255,255,255,0.45), inset 0 -1px 3px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.3), 0 0 10px ${color}20`,
+        borderRadius:3,
+        WebkitMaskImage:cells.map(()=>`linear-gradient(#fff,#fff)`).join(','),
+        WebkitMaskSize:cells.map(()=>`${size}px ${size}px`).join(','),
+        WebkitMaskPosition:cells.map(([r,c])=>`${c*size}px ${r*size}px`).join(','),
+        WebkitMaskRepeat:cells.map(()=>'no-repeat').join(','),
+        maskImage:cells.map(()=>`linear-gradient(#fff,#fff)`).join(','),
+        maskSize:cells.map(()=>`${size}px ${size}px`).join(','),
+        maskPosition:cells.map(([r,c])=>`${c*size}px ${r*size}px`).join(','),
+        maskRepeat:cells.map(()=>'no-repeat').join(','),
+      }} />
     </div>
   );
 }
@@ -1166,7 +1168,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         backgroundImage:`linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)`,
         backgroundSize:`${CELL}px ${CELL}px`,borderRadius:8,pointerEvents:"none",zIndex:0}} />
 
-      {/* Blocks — absolutely positioned, overlapping to hide cell seams */}
+      {/* Blocks — ONE div per connected group using clip-path */}
       <div style={{position:"relative",width:COLS*CELL,height:ROWS*CELL,zIndex:1}}>
         {/* Flash rows */}
         {flashRows.map(r => (
@@ -1175,84 +1177,153 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         {(() => {
           // Flood fill connected same-color groups
           const gid = Array.from({length:ROWS}, ()=>Array(COLS).fill(-1));
-          const ginfo = [];
+          const groups = [];
           const flood = (r,c,color,id) => {
             if(r<0||r>=ROWS||c<0||c>=COLS||gid[r][c]>=0) return;
             const v=filledDisplay[r]?.[c]; if(!v) return;
             if(v!==color) return;
             gid[r][c]=id;
-            const g=ginfo[id];
+            const g=groups[id];
+            g.cells.push([r,c]);
             if(r<g.minR)g.minR=r; if(r>g.maxR)g.maxR=r;
             if(c<g.minC)g.minC=c; if(c>g.maxC)g.maxC=c;
             flood(r-1,c,color,id);flood(r+1,c,color,id);flood(r,c-1,color,id);flood(r,c+1,color,id);
           };
           for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
             if(gid[r][c]<0 && filledDisplay[r][c]) {
-              ginfo.push({color:filledDisplay[r][c],minR:r,maxR:r,minC:c,maxC:c});
-              flood(r,c,filledDisplay[r][c],ginfo.length-1);
+              groups.push({color:filledDisplay[r][c],cells:[],minR:r,maxR:r,minC:c,maxC:c});
+              flood(r,c,filledDisplay[r][c],groups.length-1);
             }
           }
 
-          const els = [];
-          for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
-            const cell=filledDisplay[r][c];
-            if(!cell) continue;
-            const id=gid[r][c], g=ginfo[id];
-            const jellyBg=getJellyColor(cell);
-            const isLanding=lockedCells.has(`${r},${c}`);
+          // Build clip-path polygon for each group by tracing the outer contour
+          const buildClipPath = (g) => {
+            const gW = (g.maxC-g.minC+1)*CELL;
+            const gH = (g.maxR-g.minR+1)*CELL;
+            // Create a grid of which cells belong to this group (relative to bounding box)
+            const rows = g.maxR-g.minR+1, cols = g.maxC-g.minC+1;
+            const mask = Array.from({length:rows},()=>Array(cols).fill(false));
+            for(const [r,c] of g.cells) mask[r-g.minR][c-g.minC]=true;
+            // March around the outside to build polygon points
+            const R = 4; // corner radius (in px) — we'll approximate with straight edges
+            const pts = [];
+            // For each cell, add the outer edges as polygon segments
+            for(let mr=0;mr<rows;mr++) for(let mc=0;mc<cols;mc++) {
+              if(!mask[mr][mc]) continue;
+              const x0=mc*CELL, y0=mr*CELL, x1=(mc+1)*CELL, y1=(mr+1)*CELL;
+              const up=mr>0&&mask[mr-1][mc], dn=mr<rows-1&&mask[mr+1][mc];
+              const lt=mc>0&&mask[mr][mc-1], rt=mc<cols-1&&mask[mr][mc+1];
+              // Top edge
+              if(!up) { pts.push(`M${x0},${y0} L${x1},${y0}`); }
+              // Right edge
+              if(!rt) { pts.push(`M${x1},${y0} L${x1},${y1}`); }
+              // Bottom edge
+              if(!dn) { pts.push(`M${x1},${y1} L${x0},${y1}`); }
+              // Left edge
+              if(!lt) { pts.push(`M${x0},${y1} L${x0},${y0}`); }
+            }
+            return {gW,gH};
+          };
 
-            const sameG=(rr,cc)=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&gid[rr][cc]===id;
-            const up=sameG(r-1,c),dn=sameG(r+1,c),lt=sameG(r,c-1),rt=sameG(r,c+1);
-
-            // Round only outer corners — 6px radius
-            const R=6;
-            const tl=(!up&&!lt)?R:0, tr=(!up&&!rt)?R:0, bl=(!dn&&!lt)?R:0, br=(!dn&&!rt)?R:0;
-
-            // Overlap 1px into neighbors to eliminate subpixel seams
-            const OL=1;
-            const x = c*CELL - (lt?OL:0);
-            const y = r*CELL - (up?OL:0);
-            const w = CELL + (lt?OL:0) + (rt?OL:0);
-            const h = CELL + (up?OL:0) + (dn?OL:0);
-
-            // Unified gradient across the whole group
+          // Render one div per group
+          return groups.map((g,gi) => {
             const gW=(g.maxC-g.minC+1)*CELL, gH=(g.maxR-g.minR+1)*CELL;
-            const offX=(c-g.minC)*CELL + (lt?OL:0), offY=(r-g.minR)*CELL + (up?OL:0);
+            const gX=g.minC*CELL, gY=g.minR*CELL;
+            const jellyBg=getJellyColor(g.color);
+            const hasLanding=g.cells.some(([r,c])=>lockedCells.has(`${r},${c}`));
 
-            els.push(
-              <div key={`${r}-${c}`} className="jelly-block" style={{
-                position:"absolute", left:x, top:y, width:w, height:h,
-                borderRadius:`${tl}px ${tr}px ${br}px ${bl}px`,
+            // Build clip-path from cells
+            const rows=g.maxR-g.minR+1, cols=g.maxC-g.minC+1;
+            const mask=Array.from({length:rows},()=>Array(cols).fill(false));
+            for(const [r,c] of g.cells) mask[r-g.minR][c-g.minC]=true;
+
+            // Build polygon clip-path: for each cell, emit its rectangle
+            // Using clip-path with multiple inset rects via polygon
+            const polyParts = [];
+            for(let mr=0;mr<rows;mr++) for(let mc=0;mc<cols;mc++) {
+              if(!mask[mr][mc]) continue;
+              const px=(mc*CELL/gW)*100, py=(mr*CELL/gH)*100;
+              const pw=(CELL/gW)*100, ph=(CELL/gH)*100;
+              polyParts.push({x:px,y:py,w:pw,h:ph});
+            }
+
+            // Merge cells into horizontal runs for cleaner polygon
+            const runs = [];
+            for(let mr=0;mr<rows;mr++) {
+              let start=-1;
+              for(let mc=0;mc<=cols;mc++) {
+                if(mc<cols&&mask[mr][mc]) { if(start<0)start=mc; }
+                else { if(start>=0) { runs.push({r:mr,c0:start,c1:mc}); start=-1; } }
+              }
+            }
+
+            // Build SVG-style clip-path polygon from runs
+            // Top edge: scan left-to-right across each run's top
+            // Bottom edge: scan right-to-left across each run's bottom
+            const topEdges = [], bottomEdges = [];
+            for(const run of runs) {
+              const ly=(run.r*CELL/gH)*100, by=((run.r+1)*CELL/gH)*100;
+              const lx=(run.c0*CELL/gW)*100, rx=(run.c1*CELL/gW)*100;
+              topEdges.push({y:ly,lx,rx,r:run.r,c0:run.c0,c1:run.c1});
+              bottomEdges.push({y:by,lx,rx,r:run.r,c0:run.c0,c1:run.c1});
+            }
+
+            // Simple approach: just use the cell positions to make a polygon
+            // by tracing the outline. For complex shapes use path union.
+            // Simplest: use a compound clip-path with each cell as a rect
+            const clipRects = g.cells.map(([r,c]) => {
+              const x=((c-g.minC)*CELL/gW)*100, y=((r-g.minR)*CELL/gH)*100;
+              const w=(CELL/gW)*100, h=(CELL/gH)*100;
+              return `inset(${y}% ${100-x-w}% ${100-y-h}% ${x}% round 0)`;
+            });
+
+            // Actually, clip-path doesn't support union of insets.
+            // Use a different approach: absolute-position one div covering the bounding box,
+            // with a CSS mask made from the cells.
+            // Simplest: use an SVG mask or just stack cell-sized divs with no borders.
+
+            // FINAL APPROACH: One big div + CSS mask-image using linear gradients
+            // Build a mask: white where cells exist, transparent where they don't
+            const maskParts = [];
+            for(const [r,c] of g.cells) {
+              const x=((c-g.minC)*CELL), y=((r-g.minR)*CELL);
+              maskParts.push(`linear-gradient(#fff,#fff) ${x}px ${y}px / ${CELL}px ${CELL}px no-repeat`);
+            }
+            const maskVal = maskParts.join(',');
+
+            return (
+              <div key={`g${gi}`} className="jelly-block" style={{
+                position:"absolute", left:gX, top:gY, width:gW, height:gH,
                 background:jellyBg,
-                // Liquid glass: specular highlight + smooth depth + inner glow
+                // Mask to piece shape — ONE element, no internal divisions
+                WebkitMaskImage:maskParts.map(()=>`linear-gradient(#fff,#fff)`).join(','),
+                WebkitMaskSize:maskParts.map((_,i)=>{const [r,c]=g.cells[i];return `${CELL}px ${CELL}px`}).join(','),
+                WebkitMaskPosition:g.cells.map(([r,c])=>`${(c-g.minC)*CELL}px ${(r-g.minR)*CELL}px`).join(','),
+                WebkitMaskRepeat:g.cells.map(()=>'no-repeat').join(','),
+                maskImage:maskParts.map(()=>`linear-gradient(#fff,#fff)`).join(','),
+                maskSize:g.cells.map(()=>`${CELL}px ${CELL}px`).join(','),
+                maskPosition:g.cells.map(([r,c])=>`${(c-g.minC)*CELL}px ${(r-g.minR)*CELL}px`).join(','),
+                maskRepeat:g.cells.map(()=>'no-repeat').join(','),
+                // Liquid glass appearance — ONE gradient across the whole piece
                 backgroundImage:[
-                  // Bright specular highlight — positioned on upper-left of whole piece
-                  `radial-gradient(ellipse at ${0.25*gW}px ${0.15*gH}px, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) ${Math.max(gW,gH)*0.25}px, transparent ${Math.max(gW,gH)*0.5}px)`,
-                  // Smooth top-to-bottom depth gradient
-                  `linear-gradient(175deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 25%, transparent 50%, rgba(0,0,0,0.06) 75%, rgba(0,0,0,0.15) 100%)`,
+                  `radial-gradient(ellipse at 25% 15%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.15) ${Math.max(gW,gH)*0.3}px, transparent ${Math.max(gW,gH)*0.55}px)`,
+                  `linear-gradient(175deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 25%, transparent 50%, rgba(0,0,0,0.08) 75%, rgba(0,0,0,0.18) 100%)`,
                 ].join(','),
-                backgroundSize:`${gW}px ${gH}px, ${gW}px ${gH}px`,
-                backgroundPosition:`${-offX}px ${-offY}px, ${-offX}px ${-offY}px`,
                 boxShadow:[
-                  // Smooth inner glow on outer edges — liquid glass bevel
-                  !up?`inset 0 3px 4px rgba(255,255,255,0.55)`:'',
-                  !dn?`inset 0 -2px 4px rgba(0,0,0,0.2)`:'',
-                  !lt?`inset 3px 0 4px rgba(255,255,255,0.25)`:'',
-                  !rt?`inset -2px 0 3px rgba(0,0,0,0.12)`:'',
-                  // Soft inner color glow — makes it feel lit from inside
-                  `inset 0 0 ${CELL*0.5}px ${cell}30`,
-                  // Outer shadow for 3D lift
-                  `0 4px 12px rgba(0,0,0,0.35)`,
-                  // Color glow halo
-                  `0 0 20px ${cell}28`,
-                  `0 2px 4px rgba(0,0,0,0.2)`,
-                ].filter(Boolean).join(','),
-                animation: isLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+((r*COLS+c)%5)*0.25}s ease-in-out infinite`,
-                animationDelay: isLanding ? "0s" : `${((r*COLS+c)*0.11)%2.5}s`,
+                  `inset 0 3px 6px rgba(255,255,255,0.5)`,
+                  `inset 0 -2px 5px rgba(0,0,0,0.2)`,
+                  `inset 3px 0 5px rgba(255,255,255,0.2)`,
+                  `inset -2px 0 4px rgba(0,0,0,0.12)`,
+                  `inset 0 0 ${Math.max(gW,gH)*0.3}px ${g.color}30`,
+                  `0 4px 14px rgba(0,0,0,0.35)`,
+                  `0 0 22px ${g.color}25`,
+                ].join(','),
+                borderRadius:6,
+                animation: hasLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+(gi%5)*0.25}s ease-in-out infinite`,
+                animationDelay: hasLanding ? "0s" : `${(gi*0.3)%2.5}s`,
               }} />
             );
-          }
-          return els;
+          });
         })()}
       </div>
 
