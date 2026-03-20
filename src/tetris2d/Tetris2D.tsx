@@ -1166,10 +1166,14 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         backgroundImage:`linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)`,
         backgroundSize:`${CELL}px ${CELL}px`,borderRadius:8,pointerEvents:"none",zIndex:0}} />
 
-      {/* Blocks — unified shapes via connected-component flood fill */}
-      <div style={{position:"relative",display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:0,zIndex:1}}>
+      {/* Blocks — absolutely positioned, overlapping to hide cell seams */}
+      <div style={{position:"relative",width:COLS*CELL,height:ROWS*CELL,zIndex:1}}>
+        {/* Flash rows */}
+        {flashRows.map(r => (
+          <div key={`flash-${r}`} style={{position:"absolute",left:0,top:r*CELL,width:COLS*CELL,height:CELL,background:"rgba(255,255,255,0.9)",animation:"flashRow 0.2s ease-out",zIndex:5}} />
+        ))}
         {(() => {
-          // Flood fill to find connected same-color groups
+          // Flood fill connected same-color groups
           const gid = Array.from({length:ROWS}, ()=>Array(COLS).fill(-1));
           const ginfo = [];
           const flood = (r,c,color,id) => {
@@ -1189,59 +1193,70 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
             }
           }
 
-          return filledDisplay.flat().map((cell,i) => {
-            const r=Math.floor(i/COLS), c=i%COLS;
-            const isFlash=flashRows.includes(r);
-            if(!cell||isFlash) return <div key={i} style={{width:CELL,height:CELL,background:isFlash?"rgba(255,255,255,0.9)":"transparent",animation:isFlash?"flashRow 0.2s ease-out":"none"}} />;
-
-            const id=gid[r][c];
-            const g=ginfo[id];
+          const els = [];
+          for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+            const cell=filledDisplay[r][c];
+            if(!cell) continue;
+            const id=gid[r][c], g=ginfo[id];
             const jellyBg=getJellyColor(cell);
             const isLanding=lockedCells.has(`${r},${c}`);
 
-            // Same group = connected, no internal borders
-            const sameGroup=(rr,cc)=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&gid[rr][cc]===id;
-            const up=sameGroup(r-1,c),dn=sameGroup(r+1,c),lt=sameGroup(r,c-1),rt=sameGroup(r,c+1);
+            const sameG=(rr,cc)=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&gid[rr][cc]===id;
+            const up=sameG(r-1,c),dn=sameG(r+1,c),lt=sameG(r,c-1),rt=sameG(r,c+1);
 
-            // Only round OUTER corners (where two outer edges meet)
-            const R=5;
+            // Round only outer corners — 6px radius
+            const R=6;
             const tl=(!up&&!lt)?R:0, tr=(!up&&!rt)?R:0, bl=(!dn&&!lt)?R:0, br=(!dn&&!rt)?R:0;
+
+            // Overlap 1px into neighbors to eliminate subpixel seams
+            const OL=1;
+            const x = c*CELL - (lt?OL:0);
+            const y = r*CELL - (up?OL:0);
+            const w = CELL + (lt?OL:0) + (rt?OL:0);
+            const h = CELL + (up?OL:0) + (dn?OL:0);
 
             // Unified gradient across the whole group
             const gW=(g.maxC-g.minC+1)*CELL, gH=(g.maxR-g.minR+1)*CELL;
-            const offX=(c-g.minC)*CELL, offY=(r-g.minR)*CELL;
+            const offX=(c-g.minC)*CELL + (lt?OL:0), offY=(r-g.minR)*CELL + (up?OL:0);
 
-            return (
-              <div key={i} className="jelly-block" style={{
-                width:CELL, height:CELL,
+            els.push(
+              <div key={`${r}-${c}`} className="jelly-block" style={{
+                position:"absolute", left:x, top:y, width:w, height:h,
                 borderRadius:`${tl}px ${tr}px ${br}px ${bl}px`,
                 background:jellyBg,
-                // Unified highlight gradient spanning the whole piece
-                backgroundImage:`radial-gradient(ellipse at ${0.3*gW}px ${0.2*gH}px, rgba(255,255,255,0.45) 0%, transparent ${Math.max(gW,gH)*0.5}px), linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)`,
+                // Unified specular + depth gradient across entire piece
+                backgroundImage:[
+                  `radial-gradient(ellipse at ${0.3*gW}px ${0.15*gH}px, rgba(255,255,255,0.55) 0%, transparent ${Math.max(gW,gH)*0.45}px)`,
+                  `linear-gradient(175deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 35%, transparent 55%, rgba(0,0,0,0.12) 100%)`,
+                ].join(','),
                 backgroundSize:`${gW}px ${gH}px, ${gW}px ${gH}px`,
                 backgroundPosition:`${-offX}px ${-offY}px, ${-offX}px ${-offY}px`,
                 boxShadow:[
-                  !up?`inset 0 1.5px 0 rgba(255,255,255,0.5)`:'',
-                  !dn?`inset 0 -1.5px 0 rgba(0,0,0,0.15)`:'',
-                  !lt?`inset 1.5px 0 0 rgba(255,255,255,0.25)`:'',
-                  !rt?`inset -1.5px 0 0 rgba(0,0,0,0.1)`:'',
-                  `0 2px 8px rgba(0,0,0,0.25)`,
-                  `0 0 12px ${cell}20`,
+                  // 3D edge lighting — only on exposed outer edges
+                  !up?`inset 0 2px 1px rgba(255,255,255,0.6)`:'',
+                  !dn?`inset 0 -2px 1px rgba(0,0,0,0.18)`:'',
+                  !lt?`inset 2px 0 1px rgba(255,255,255,0.3)`:'',
+                  !rt?`inset -2px 0 1px rgba(0,0,0,0.1)`:'',
+                  // Outer 3D shadow + glow
+                  `0 3px 10px rgba(0,0,0,0.3)`,
+                  `0 0 16px ${cell}25`,
                 ].filter(Boolean).join(','),
-                animation: isLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+(i%5)*0.25}s ease-in-out infinite`,
-                animationDelay: isLanding ? "0s" : `${(i*0.11)%2.5}s`,
+                animation: isLanding ? "jellyLand 0.6s cubic-bezier(0.34,1.56,0.64,1)" : `jelloBreath ${2.8+((r*COLS+c)%5)*0.25}s ease-in-out infinite`,
+                animationDelay: isLanding ? "0s" : `${((r*COLS+c)*0.11)%2.5}s`,
               }} />
             );
-          });
+          }
+          return els;
         })()}
       </div>
 
       {/* Ghost piece layer */}
-      <div style={{position:"absolute",top:2,left:2,display:"grid",gridTemplateColumns:`repeat(${COLS},${CELL}px)`,gridTemplateRows:`repeat(${ROWS},${CELL}px)`,gap:0,pointerEvents:"none",zIndex:2}}>
+      <div style={{position:"absolute",top:2,left:2,width:COLS*CELL,height:ROWS*CELL,pointerEvents:"none",zIndex:2}}>
         {ghostDisplay.flat().map((cell,i) => {
-          if(!cell) return <div key={i} style={{width:CELL,height:CELL}} />;
+          if(!cell) return null;
+          const r=Math.floor(i/COLS), c=i%COLS;
           const bc = cell.slice(0,7);
-          return <div key={i} style={{width:CELL,height:CELL,borderRadius:3,background:`${bc}15`,border:`1px solid ${bc}25`}} />;
+          return <div key={i} style={{position:"absolute",left:c*CELL,top:r*CELL,width:CELL,height:CELL,borderRadius:3,background:`${bc}15`,border:`1px solid ${bc}22`}} />;
         })}
       </div>
 
