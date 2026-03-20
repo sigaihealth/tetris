@@ -238,17 +238,19 @@ export default function PhysicsTetris() {
     const cellSize = getCellSize();
     const chamberW = COLS * cellSize;
     const chamberH = ROWS * cellSize;
-    const wallThickness = 20;
+    const wallThickness = 60; // thick walls prevent any tunneling
     const offsetX = Math.floor((window.innerWidth - chamberW) / 2);
     const offsetY = Math.floor((window.innerHeight - chamberH) / 2) + 20;
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Matter.js engine
+    // Matter.js engine — use more solver iterations for solid collisions
     const engine = Engine.create();
     engine.gravity.x = 0;
-    engine.gravity.y = 0.8; // gentler gravity — more time to control pieces
+    engine.gravity.y = 0.8;
+    engine.positionIterations = 10;  // default 6 — more = less penetration
+    engine.velocityIterations = 8;   // default 4 — more = more stable
 
     // Walls (static) — very slippery so pieces don't stick
     const wallOpts = { isStatic: true, label: 'wall', friction: 0.02, frictionStatic: 0.02, restitution: 0.1 };
@@ -558,8 +560,14 @@ export default function PhysicsTetris() {
         }
       }
 
-      // Step physics (fixed timestep)
-      Engine.update(engine, dt);
+      // Step physics — use small fixed steps to prevent tunneling
+      const maxStep = 16.67; // cap at ~60fps step
+      let remaining = dt;
+      while (remaining > 0) {
+        const step = Math.min(remaining, maxStep);
+        Engine.update(engine, step);
+        remaining -= step;
+      }
 
       // Settling detection
       if (activePiece) {
@@ -731,8 +739,8 @@ export default function PhysicsTetris() {
       }
 
       if (e.code === 'Space') {
-        // Slam down — fast, kills horizontal movement, straightens piece
-        Body.setVelocity(activePiece, { x: 0, y: 12 });
+        // Slam down — fast but capped to prevent tunneling through floor
+        Body.setVelocity(activePiece, { x: 0, y: 8 });
         Body.setAngularVelocity(activePiece, 0);
         // Snap angle to nearest 90 degrees
         const sAngle = Math.round(activePiece.angle / (Math.PI / 2)) * (Math.PI / 2);
