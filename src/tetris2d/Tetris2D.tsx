@@ -345,11 +345,12 @@ function useAudio() {
         o.connect(g); g.connect(master);
         o.start(ct + d); o.stop(ct + d + tempo * 0.7);
       }
-      arpeggioTimer = setTimeout(scheduleArpeggio, (numNotes * tempo + 0.8 + Math.random() * 0.5) * 1000);
+      const t2 = setTimeout(scheduleArpeggio, (numNotes * tempo + 0.8 + Math.random() * 0.5) * 1000);
+      if (musicNodesRef.current) musicNodesRef.current.arpeggioTimer = t2;
     };
     scheduleArpeggio();
 
-    musicNodesRef.current = { pad1, pad2, lfo, master, arpeggioTimer };
+    musicNodesRef.current = { pad1, pad2, lfo, master, arpeggioTimer: null };
   }, [getCtx]);
 
   const startZenMusic = useCallback(() => {
@@ -392,11 +393,12 @@ function useAudio() {
         o.start(ct + d); o.stop(ct + d + 1.5);
       }
       // Long pauses between chimes (2-5 seconds)
-      arpeggioTimer = setTimeout(scheduleZenChime, (2000 + Math.random() * 3000));
+      const t2 = setTimeout(scheduleZenChime, (2000 + Math.random() * 3000));
+      if (musicNodesRef.current) musicNodesRef.current.arpeggioTimer = t2;
     };
     scheduleZenChime();
 
-    musicNodesRef.current = { pad1, pad2, pad3, lfo, master, arpeggioTimer };
+    musicNodesRef.current = { pad1, pad2, pad3, lfo, master, arpeggioTimer: null };
   }, [getCtx]);
 
   // Softer zen line clear chime
@@ -1549,28 +1551,26 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 }
 
 function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
-  const intervalRef = useRef(null);
+  const dasTimeoutRef = useRef(null);
+  const dasIntervalRef = useRef(null);
   const DAS_DELAY = 150;
   const DAS_RATE = 45;
 
-  // Hold-to-repeat for movement buttons
-  const startRepeat = useCallback((action) => {
-    action(); // fire immediately
-    const timer = setTimeout(() => {
-      intervalRef.current = setInterval(action, DAS_RATE);
-    }, DAS_DELAY);
-    intervalRef.current = timer;
-  }, []);
-
   const stopRepeat = useCallback(() => {
-    if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (dasTimeoutRef.current) { clearTimeout(dasTimeoutRef.current); dasTimeoutRef.current = null; }
+    if (dasIntervalRef.current) { clearInterval(dasIntervalRef.current); dasIntervalRef.current = null; }
   }, []);
 
-  useEffect(() => () => stopRepeat(), [stopRepeat]);
+  const startRepeat = useCallback((action) => {
+    stopRepeat(); // clear any existing repeat first
+    action();
+    dasTimeoutRef.current = setTimeout(() => {
+      dasTimeoutRef.current = null;
+      dasIntervalRef.current = setInterval(action, DAS_RATE);
+    }, DAS_DELAY);
+  }, [stopRepeat]);
+
+  useEffect(() => () => stopRepeat(), []);
 
   const holdBtn = (label, action, flex) => (
     <button className="touch-btn"
