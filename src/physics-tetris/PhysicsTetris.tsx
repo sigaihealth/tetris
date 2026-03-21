@@ -840,6 +840,7 @@ export default function PhysicsTetris() {
         }
       }}
       onTouchEnd={(e) => { e.preventDefault(); keysObjRef.current[code] = false; }}
+      onTouchCancel={() => { keysObjRef.current[code] = false; }}
       onMouseDown={() => {
         keysObjRef.current[code] = true;
         if (code === 'ArrowUp' || code === 'Space') {
@@ -847,8 +848,9 @@ export default function PhysicsTetris() {
         }
       }}
       onMouseUp={() => { keysObjRef.current[code] = false; }}
+      onMouseLeave={() => { keysObjRef.current[code] = false; }}
       style={{
-        width: wide ? '30%' : '20%', maxWidth: wide ? 100 : 70, minWidth: wide ? 80 : 52, height: 56,
+        width: wide ? '32%' : '22%', maxWidth: wide ? 110 : 76, minWidth: wide ? 86 : 56, height: 60,
         borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)',
         background: 'rgba(255,255,255,0.06)', color: 'rgba(200,220,255,0.7)',
         fontSize: wide ? 12 : 20, fontFamily: "'Orbitron', monospace", fontWeight: 700,

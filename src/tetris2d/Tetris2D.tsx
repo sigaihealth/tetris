@@ -1430,8 +1430,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes zenFloat{0%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-40px) scale(1.3);opacity:0.6}100%{transform:translateY(0) scale(1);opacity:0.3}}
         @keyframes zenBoardGlow{0%,100%{box-shadow:0 0 20px rgba(100,150,200,0.15),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 40px rgba(100,150,200,0.3),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}}
         .menu-btn:hover{color:rgba(40,60,90,0.9)!important;border-color:rgba(255,255,255,0.6)!important}
-        .touch-btn{-webkit-tap-highlight-color:transparent}
-        .touch-btn:active{opacity:0.7;transform:scale(0.93)}
+        .touch-btn{-webkit-tap-highlight-color:transparent;transition:transform 0.06s,background 0.06s}
+        .touch-btn:active{background:rgba(255,255,255,0.15)!important;transform:scale(0.92)}
       `}</style>
 
       {/* Zen floating particles */}
@@ -1508,41 +1508,28 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
           {/* Board centered */}
           {boardEl}
 
-          {/* Info panels below board in horizontal row */}
-          <div style={{display:"flex",gap:6,marginTop:6,width:boardWidth+4,justifyContent:"center",flexWrap:"wrap"}}>
-            <div style={{flex:"0 0 auto",minWidth:60}}>{holdPanel}</div>
-            <div style={{flex:"0 0 auto",minWidth:60}}>{nextPanel}</div>
-            <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:"1 1 auto",minWidth:0}}>
+          {/* Compact info strip below board */}
+          <div style={{display:"flex",gap:4,marginTop:4,width:boardWidth+4,justifyContent:"space-between",alignItems:"stretch"}}>
+            <div style={{flex:"0 0 auto"}}>{holdPanel}</div>
+            <div style={{flex:"1 1 auto",display:"flex",alignItems:"center",justifyContent:"center",gap:12,
+              background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"4px 8px",border:"1px solid rgba(255,255,255,0.05)"}}>
               {isZen ? (
-                <>
-                  <SidePanel title="ZEN">
-                    <div style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:900,color:"#c9a0dc",textAlign:"center"}}>🧘</div>
-                  </SidePanel>
-                  <SidePanel title="LNS">
-                    <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0b8e0",textAlign:"center"}}>{lines}</div>
-                  </SidePanel>
-                </>
+                <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0b8e0"}}>🧘 {lines} lines</span>
               ) : (
                 <>
-                  <SidePanel title="SCORE">
-                    <div style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#00f0f0",textAlign:"center"}}>{score.toLocaleString()}</div>
-                  </SidePanel>
-                  <SidePanel title="LNS">
-                    <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>
-                      {target && challenge.goal === "lines" ? `${lines}/${target}` : lines}
-                    </div>
-                  </SidePanel>
-                  <SidePanel title="LVL">
-                    <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#f0a000",textAlign:"center"}}>{level}</div>
-                  </SidePanel>
-                  {combo > 1 && (
-                    <SidePanel title="CMB">
-                      <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:900,color:"#f060a0",textAlign:"center"}}>{combo}x</div>
-                    </SidePanel>
-                  )}
+                  <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
+                  <span style={{fontFamily:"'Orbitron'",fontSize:9,color:"rgba(160,180,210,0.4)"}}>|</span>
+                  <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#90a0d0"}}>L{level}</span>
+                  <span style={{fontFamily:"'Orbitron'",fontSize:9,color:"rgba(160,180,210,0.4)"}}>|</span>
+                  <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#e0a040"}}>{target && challenge.goal === "lines" ? `${lines}/${target}` : `${lines}ln`}</span>
+                  {combo > 1 && <>
+                    <span style={{fontFamily:"'Orbitron'",fontSize:9,color:"rgba(160,180,210,0.4)"}}>|</span>
+                    <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:900,color:"#e060a0"}}>{combo}x</span>
+                  </>}
                 </>
               )}
             </div>
+            <div style={{flex:"0 0 auto"}}>{nextPanel}</div>
           </div>
 
           {/* Mobile touch control buttons */}
@@ -1557,32 +1544,74 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 }
 
 function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
-  const tb = (label, action, flex) => (
+  const intervalRef = useRef(null);
+  const DAS_DELAY = 150;
+  const DAS_RATE = 45;
+
+  // Hold-to-repeat for movement buttons
+  const startRepeat = useCallback((action) => {
+    action(); // fire immediately
+    const timer = setTimeout(() => {
+      intervalRef.current = setInterval(action, DAS_RATE);
+    }, DAS_DELAY);
+    intervalRef.current = timer;
+  }, []);
+
+  const stopRepeat = useCallback(() => {
+    if (intervalRef.current) {
+      clearTimeout(intervalRef.current);
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => stopRepeat(), [stopRepeat]);
+
+  const holdBtn = (label, action, flex) => (
+    <button className="touch-btn"
+      onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); startRepeat(action); }}
+      onTouchEnd={(e) => { e.preventDefault(); stopRepeat(); }}
+      onTouchCancel={() => stopRepeat()}
+      onMouseDown={(e) => { e.preventDefault(); startRepeat(action); }}
+      onMouseUp={() => stopRepeat()}
+      onMouseLeave={() => stopRepeat()}
+      style={{
+        fontFamily:"'Orbitron'",fontSize:label.length>2?11:22,fontWeight:700,
+        flex:flex||"1 1 0",height:58,minWidth:52,
+        border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,
+        background:"rgba(255,255,255,0.05)",color:"rgba(180,200,230,0.7)",
+        display:"flex",alignItems:"center",justifyContent:"center",
+        cursor:"pointer",letterSpacing:label.length>2?2:0,
+        WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
+      }}>{label}</button>
+  );
+
+  const tapBtn = (label, action, flex) => (
     <button className="touch-btn"
       onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); action(); }}
       onMouseDown={(e) => { e.preventDefault(); action(); }}
       style={{
-        fontFamily:"'Orbitron'",fontSize:label.length>2?11:18,fontWeight:700,
-        flex:flex||"1 1 0",height:52,minWidth:48,
-        border:"1px solid rgba(255,255,255,0.4)",borderRadius:8,
-        background:"rgba(255,255,255,0.3)",color:"rgba(60,80,110,0.7)",
+        fontFamily:"'Orbitron'",fontSize:label.length>2?11:22,fontWeight:700,
+        flex:flex||"1 1 0",height:58,minWidth:52,
+        border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,
+        background:"rgba(255,255,255,0.05)",color:"rgba(180,200,230,0.7)",
         display:"flex",alignItems:"center",justifyContent:"center",
-        cursor:"pointer",letterSpacing:label.length>2?1:0,
+        cursor:"pointer",letterSpacing:label.length>2?2:0,
         WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
-        transition:"opacity 0.1s, transform 0.1s",
       }}>{label}</button>
   );
+
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:8,width:"100%",maxWidth:320,padding:"0 4px"}}>
-      <div style={{display:"flex",gap:6}}>
-        {tb("\u25C0", () => onMove(-1))}
-        {tb("\u25BC", onDrop)}
-        {tb("\u21BB", onRotate)}
-        {tb("\u25B6", () => onMove(1))}
+    <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8,width:"100%",maxWidth:360,padding:"0 8px"}}>
+      <div style={{display:"flex",gap:8}}>
+        {holdBtn("◀", () => onMove(-1))}
+        {holdBtn("▼", onDrop)}
+        {tapBtn("↻", onRotate)}
+        {holdBtn("▶", () => onMove(1))}
       </div>
-      <div style={{display:"flex",gap:6}}>
-        {tb("HOLD", onHold)}
-        {tb("\u2B07 DROP", onHardDrop, "2 1 0")}
+      <div style={{display:"flex",gap:8}}>
+        {tapBtn("HOLD", onHold)}
+        {tapBtn("⬇ DROP", onHardDrop, "2 1 0")}
       </div>
     </div>
   );
