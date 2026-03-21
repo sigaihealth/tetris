@@ -1118,7 +1118,7 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
 
           {/* Opponent mini-board overlay on mobile */}
           <div style={{
-            position:'fixed', top:8, right:8, zIndex:30,
+            position:'fixed', top:'calc(8px + env(safe-area-inset-top, 0px))', right:8, zIndex:30,
             background:'rgba(10,10,22,0.9)', border:'1px solid #1a1a2e', borderRadius:8,
             padding:6,
           }}>

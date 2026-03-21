@@ -4,10 +4,17 @@ import { useState, useEffect, useCallback, useRef } from "react";
 const COLS = 10;
 const ROWS = 20;
 const getCellSize = () => {
+  const mobile = window.innerWidth < 600;
+  if (mobile) {
+    // Calculate max cell size that fits everything vertically
+    // Need: header(28) + progress(4) + board(ROWS*cell) + infoStrip(32) + controls(132) + margins(20)
+    const availH = window.innerHeight - 216; // 216px for all non-board UI
+    const maxByHeight = Math.floor(availH / ROWS);
+    const maxByWidth = Math.floor((window.innerWidth - 20) / (COLS + 1));
+    return Math.max(16, Math.min(maxByHeight, maxByWidth));
+  }
   const maxByWidth = Math.floor((window.innerWidth - 320) / (COLS + 1)); // leave room for side panels
   const maxByHeight = Math.floor((window.innerHeight - 140) / (ROWS + 1)); // leave room for header/footer
-  const mobile = window.innerWidth < 600;
-  if (mobile) return Math.min(28, Math.floor((window.innerWidth - 20) / (COLS + 1)));
   return Math.max(24, Math.min(42, maxByWidth, maxByHeight)); // 24-42px range for desktop
 };
 const getIsMobile = () => window.innerWidth < 600;
@@ -1417,6 +1424,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       justifyContent:isMobile?"flex-start":"center",
       background:"radial-gradient(ellipse at 50% 30%, #1a2238 0%, #0e1524 50%, #080c16 100%)",fontFamily:"'JetBrains Mono','Fira Code',monospace",
       color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:isMobile?"6px 4px":"12px 8px",
+      paddingBottom:isMobile?140:undefined,
       touchAction:"none",WebkitTouchCallout:"none"}}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <style>{`
@@ -1521,25 +1529,29 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
             <div style={{flex:"1 1 auto",display:"flex",alignItems:"center",justifyContent:"center",gap:12,
               background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"4px 8px",border:"1px solid rgba(255,255,255,0.05)"}}>
               {isZen ? (
-                <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0b8e0"}}>🧘 {lines} lines</span>
+                <span style={{fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#a0b8e0"}}>{lines} lines</span>
               ) : (
                 <>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:9,color:"rgba(160,180,210,0.4)"}}>|</span>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#90a0d0"}}>L{level}</span>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:9,color:"rgba(160,180,210,0.4)"}}>|</span>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#e0a040"}}>{target && challenge.goal === "lines" ? `${lines}/${target}` : `${lines}ln`}</span>
-                  {combo > 1 && <>
-                    <span style={{fontFamily:"'Orbitron'",fontSize:9,color:"rgba(160,180,210,0.4)"}}>|</span>
-                    <span style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:900,color:"#e060a0"}}>{combo}x</span>
-                  </>}
+                  <span style={{fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
+                  <span style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#e0a040"}}>{target && challenge.goal === "lines" ? `${lines}/${target}` : `${lines}ln`}</span>
+                  {combo > 1 && (
+                    <span style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:900,color:"#e060a0"}}>{combo}x</span>
+                  )}
                 </>
               )}
             </div>
             <div style={{flex:"0 0 auto"}}>{nextPanel}</div>
           </div>
 
-          {/* Mobile touch control buttons */}
+        </div>
+      )}
+
+      {/* Mobile controls fixed at bottom */}
+      {isMobile && (
+        <div style={{position:'fixed', bottom: 0, left: 0, right: 0,
+          paddingBottom: 'env(safe-area-inset-bottom, 8px)',
+          background: 'rgba(10,14,26,0.95)',
+          zIndex: 20, padding: '8px 8px calc(8px + env(safe-area-inset-bottom, 0px))'}}>
           <MobileTouchControls
             onMove={move} onRotate={rotatePiece} onDrop={drop}
             onHardDrop={hardDrop} onHold={holdPiece}

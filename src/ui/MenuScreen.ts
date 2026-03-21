@@ -231,6 +231,25 @@ export class MenuScreen {
     modeSection.appendChild(modeRow);
     this.content.appendChild(modeSection);
 
+    // Start button — placed early so mobile users see it without scrolling
+    const startAction = (): void => {
+      if (this.selectedMode === '2d') {
+        this.callbacks.onStart2D();
+      } else if (this.selectedMode === 'physics') {
+        this.callbacks.onStartPhysics();
+      } else {
+        this.callbacks.onStart(this.selectedSize);
+      }
+    };
+
+    this.content.appendChild(
+      btn('menu-btn primary', 'START GAME', startAction),
+    );
+
+    this.content.appendChild(
+      btn('menu-btn', 'MULTIPLAYER', () => this.callbacks.onMultiplayer()),
+    );
+
     // Append well size section (visibility managed by mode)
     this.content.appendChild(sizeSection);
     updateSizeVisibility();
@@ -255,25 +274,6 @@ export class MenuScreen {
       }));
       this.content.appendChild(musicSection);
     }
-
-    // Start button
-    const startAction = (): void => {
-      if (this.selectedMode === '2d') {
-        this.callbacks.onStart2D();
-      } else if (this.selectedMode === 'physics') {
-        this.callbacks.onStartPhysics();
-      } else {
-        this.callbacks.onStart(this.selectedSize);
-      }
-    };
-
-    this.content.appendChild(
-      btn('menu-btn primary', 'START GAME', startAction),
-    );
-
-    this.content.appendChild(
-      btn('menu-btn', 'MULTIPLAYER', () => this.callbacks.onMultiplayer()),
-    );
 
     // Append controls section (content managed by buildControlsGrid via updateSizeVisibility)
     this.content.appendChild(ctrlSection);

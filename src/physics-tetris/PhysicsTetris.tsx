@@ -886,7 +886,7 @@ export default function PhysicsTetris() {
       {/* Mobile touch controls */}
       {isMobile && (
         <div style={{
-          position: 'fixed', bottom: 12, left: 0, right: 0,
+          position: 'fixed', bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))', left: 0, right: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
           zIndex: 60, pointerEvents: 'auto',
         }}>
@@ -908,7 +908,7 @@ export default function PhysicsTetris() {
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('physics-tetris-exit'))}
         style={{
-          position: 'fixed', top: 12, left: 12, zIndex: 60,
+          position: 'fixed', top: 'calc(12px + env(safe-area-inset-top, 0px))', left: 12, zIndex: 60,
           padding: isMobile ? '8px 14px' : '5px 10px', borderRadius: 8,
           border: '1px solid rgba(255,255,255,0.1)',
           background: 'rgba(255,255,255,0.06)', color: 'rgba(200,220,255,0.6)',
