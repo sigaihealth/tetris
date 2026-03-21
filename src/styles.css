@@ -9,6 +9,8 @@ body {
   background: #354060;
   font-family: 'Courier New', monospace;
   color: #e0e0f0;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 canvas {
@@ -271,4 +273,43 @@ canvas {
 
 .name-input:focus {
   box-shadow: 0 0 15px rgba(102, 126, 234, 0.4);
+}
+
+/* ─── Safe area insets ─── */
+#tetris-2d-root,
+#multiplayer-root,
+#physics-root {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ─── Mobile ─── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 600px) {
+  .menu-title {
+    font-size: 36px !important;
+    letter-spacing: 6px !important;
+  }
+  .title-3d {
+    font-size: 22px !important;
+  }
+  .menu-container {
+    padding: 20px 16px !important;
+  }
+  .size-selector {
+    flex-wrap: wrap !important;
+  }
+  .controls-grid {
+    font-size: 11px !important;
+    max-width: 260px !important;
+  }
+  .menu-btn {
+    padding: 12px !important;
+    font-size: 14px !important;
+  }
+  .stats-grid {
+    font-size: 14px !important;
+  }
 }

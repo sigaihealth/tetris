@@ -193,7 +193,7 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
       {/* Main content area */}
       <div style={{
         background: '#0a0a16', border: '1px solid #1a1a2e', borderRadius: 12,
-        padding: '28px 32px', maxWidth: 440, width: '92%',
+        padding: window.innerWidth < 500 ? '20px 16px' : '28px 32px', maxWidth: 440, width: '92%',
         animation: 'fadeIn 0.3s ease-out',
       }}>
 
@@ -303,7 +303,7 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
               ROOM CODE
             </div>
             <div style={{
-              fontFamily: "'Orbitron'", fontSize: 36, fontWeight: 900, letterSpacing: 8,
+              fontFamily: "'Orbitron'", fontSize: window.innerWidth < 500 ? 28 : 36, fontWeight: 900, letterSpacing: 8,
               color: '#667eea', marginBottom: 16,
               textShadow: '0 0 20px #667eea44',
             }}>

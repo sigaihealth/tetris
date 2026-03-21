@@ -13,7 +13,7 @@ const COLS = 10;
 const ROWS = 20;
 const getCellSize = () => {
   const mobile = window.innerWidth < 700;
-  const maxH = Math.floor((window.innerHeight - (mobile ? 200 : 120)) / 22);
+  const maxH = Math.floor((window.innerHeight - (mobile ? 160 : 120)) / 22);
   const maxW = Math.floor((window.innerWidth - 40) / (COLS + 2));
   return Math.max(18, Math.min(mobile ? 28 : 42, maxH, maxW));
 };
@@ -823,7 +823,7 @@ export default function PhysicsTetris() {
       onMouseDown={() => window.dispatchEvent(new KeyboardEvent('keydown', { code }))}
       onMouseUp={() => window.dispatchEvent(new KeyboardEvent('keyup', { code }))}
       style={{
-        width: wide ? 90 : 62, height: tall ? 62 : 52,
+        width: wide ? '30%' : '20%', maxWidth: wide ? 100 : 70, minWidth: wide ? 80 : 52, height: 56,
         borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)',
         background: 'rgba(255,255,255,0.06)', color: 'rgba(200,220,255,0.7)',
         fontSize: wide ? 12 : 20, fontFamily: "'Orbitron', monospace", fontWeight: 700,
