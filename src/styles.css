@@ -116,6 +116,8 @@ canvas {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .menu-container {
@@ -296,27 +298,56 @@ canvas {
 
 @media (max-width: 600px) {
   .menu-title {
-    font-size: 36px !important;
-    letter-spacing: 6px !important;
+    font-size: 32px !important;
+    letter-spacing: 4px !important;
+    margin-bottom: 24px !important;
   }
   .title-3d {
-    font-size: 22px !important;
+    font-size: 20px !important;
   }
   .menu-container {
-    padding: 20px 16px !important;
+    padding: 16px 12px !important;
+    max-width: 100% !important;
+  }
+  .menu-section {
+    margin-bottom: 16px !important;
   }
   .size-selector {
     flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .size-btn {
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    min-width: 70px !important;
   }
   .controls-grid {
-    font-size: 11px !important;
-    max-width: 260px !important;
+    display: none !important;
+  }
+  .controls-ref {
+    display: none !important;
   }
   .menu-btn {
-    padding: 12px !important;
-    font-size: 14px !important;
+    padding: 14px !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+    min-height: 50px !important;
+  }
+  .menu-label {
+    font-size: 10px !important;
+    letter-spacing: 2px !important;
+  }
+  .volume-slider {
+    width: 100% !important;
+    max-width: 280px !important;
   }
   .stats-grid {
     font-size: 14px !important;
+    gap: 6px 12px !important;
+  }
+  .name-input {
+    width: 100% !important;
+    max-width: 250px !important;
+    font-size: 16px !important;
   }
 }

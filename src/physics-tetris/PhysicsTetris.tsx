@@ -239,9 +239,10 @@ export default function PhysicsTetris() {
     const cellSize = getCellSize();
     const chamberW = COLS * cellSize;
     const chamberH = ROWS * cellSize;
+    const mobile = window.innerWidth < 700;
     const wallThickness = 60; // thick walls prevent any tunneling
     const offsetX = Math.floor((window.innerWidth - chamberW) / 2);
-    const offsetY = Math.floor((window.innerHeight - chamberH) / 2) + 20;
+    const offsetY = Math.floor((window.innerHeight - chamberH) / 2) + (mobile ? 30 : 20);
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -690,39 +691,45 @@ export default function PhysicsTetris() {
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
 
-      // Title
-      ctx.font = `bold ${Math.round(cellSize * 0.6)}px 'Courier New', monospace`;
+      // Title — smaller on mobile to avoid overlap with back button
+      ctx.font = `bold ${Math.round(cellSize * (mobile ? 0.4 : 0.6))}px 'Courier New', monospace`;
       ctx.fillStyle = 'rgba(180, 200, 240, 0.8)';
       ctx.textAlign = 'center';
-      ctx.fillText('PHYSICS TETRIS', offsetX + chamberW / 2, offsetY - cellSize * 0.4);
+      ctx.fillText('PHYSICS TETRIS', offsetX + chamberW / 2, offsetY - cellSize * (mobile ? 0.2 : 0.4));
 
-      // Score (top left of chamber)
-      ctx.font = `bold ${Math.round(cellSize * 0.45)}px 'Courier New', monospace`;
-      ctx.textAlign = 'left';
+      // Score (top-right on mobile to avoid back button overlap, top-left on desktop)
+      ctx.font = `bold ${Math.round(cellSize * (mobile ? 0.35 : 0.45))}px 'Courier New', monospace`;
+      ctx.textAlign = mobile ? 'right' : 'left';
       ctx.fillStyle = 'rgba(200, 220, 255, 0.9)';
-      ctx.fillText(`SCORE: ${score}`, offsetX - cellSize * 0.1, offsetY - cellSize * 1.2);
+      ctx.fillText(`SCORE: ${score}`, mobile ? offsetX + chamberW + cellSize * 0.1 : offsetX - cellSize * 0.1, offsetY - cellSize * (mobile ? 0.8 : 1.2));
 
       // Next piece preview (right of chamber)
       const previewX = offsetX + chamberW + cellSize * 2.5;
       const previewY = offsetY + cellSize * 2;
-      ctx.font = `bold ${Math.round(cellSize * 0.38)}px 'Courier New', monospace`;
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(160, 180, 220, 0.7)';
-      ctx.fillText('NEXT', previewX, previewY - cellSize * 1.2);
+      if (!mobile) {
+        ctx.font = `bold ${Math.round(cellSize * 0.38)}px 'Courier New', monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(160, 180, 220, 0.7)';
+        ctx.fillText('NEXT', previewX, previewY - cellSize * 1.2);
+      }
 
-      // Draw next piece preview
-      const previewCellSize = cellSize * 0.7;
-      drawPiecePreview(ctx, nextType, previewX, previewY, previewCellSize);
+      // Draw next piece preview (hide on mobile — not enough space)
+      if (!mobile) {
+        const previewCellSize = cellSize * 0.7;
+        drawPiecePreview(ctx, nextType, previewX, previewY, previewCellSize);
+      }
 
-      // Controls hint (below chamber)
-      ctx.font = `${Math.round(cellSize * 0.3)}px 'Courier New', monospace`;
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(120, 140, 180, 0.5)';
-      ctx.fillText(
-        '\u2190\u2192 Move  \u2191 Rotate  \u2193 Soft drop  SPACE Slam  ESC Menu',
-        offsetX + chamberW / 2,
-        offsetY + chamberH + cellSize * 1.0,
-      );
+      // Controls hint (below chamber, hide on mobile — touch buttons are shown)
+      if (!mobile) {
+        ctx.font = `${Math.round(cellSize * 0.3)}px 'Courier New', monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(120, 140, 180, 0.5)';
+        ctx.fillText(
+          '\u2190\u2192 Move  \u2191 Rotate  \u2193 Soft drop  SPACE Slam  ESC Menu',
+          offsetX + chamberW / 2,
+          offsetY + chamberH + cellSize * 1.0,
+        );
+      }
 
       // Game over overlay
       if (gameOver) {
@@ -897,19 +904,18 @@ export default function PhysicsTetris() {
         </div>
       )}
 
-      {/* Back button for mobile */}
-      {isMobile && (
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('physics-tetris-exit'))}
-          style={{
-            position: 'fixed', top: 12, left: 12, zIndex: 60,
-            padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
-            background: 'rgba(255,255,255,0.06)', color: 'rgba(200,220,255,0.6)',
-            fontFamily: "'Orbitron', monospace", fontSize: 10, fontWeight: 700,
-            letterSpacing: 2, cursor: 'pointer',
-          }}
-        >← MENU</button>
-      )}
+      {/* Back button — always visible */}
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('physics-tetris-exit'))}
+        style={{
+          position: 'fixed', top: 12, left: 12, zIndex: 60,
+          padding: isMobile ? '8px 14px' : '5px 10px', borderRadius: 8,
+          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(255,255,255,0.06)', color: 'rgba(200,220,255,0.6)',
+          fontFamily: "'Orbitron', monospace", fontSize: isMobile ? 10 : 9, fontWeight: 700,
+          letterSpacing: 2, cursor: 'pointer',
+        }}
+      >{'\u2190'} MENU</button>
     </div>
   );
 }

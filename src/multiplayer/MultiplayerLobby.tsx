@@ -228,11 +228,12 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
         {mode === 'choose' && (
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <button className="mp-btn" onClick={handleCreate} style={{
-              width: '100%', padding: '14px',
+              width: '100%', padding: window.innerWidth < 500 ? '16px' : '14px',
               fontFamily: "'Orbitron'", fontSize: 14, fontWeight: 700, letterSpacing: 3,
               border: '2px solid #667eea', borderRadius: 8,
               background: '#667eea12', color: '#667eea', cursor: 'pointer',
               transition: 'all 0.2s', marginBottom: 12,
+              minHeight: window.innerWidth < 500 ? 54 : undefined,
             }}>
               CREATE ROOM
             </button>
@@ -249,7 +250,7 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
             }}>
               JOIN ROOM
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexDirection: window.innerWidth < 500 ? 'column' : 'row' }}>
               <input
                 ref={joinInputRef}
                 className="mp-input"
@@ -258,7 +259,7 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0, 6))}
                 placeholder="ROOM CODE"
                 style={{
-                  flex: 1, padding: '10px 14px',
+                  flex: 1, padding: '10px 14px', width: '100%',
                   background: 'rgba(20, 20, 40, 0.8)',
                   border: '1px solid #2a2a4e', borderRadius: 6,
                   color: '#e0e0ff', fontFamily: "'Orbitron'", fontSize: 16, fontWeight: 700,
@@ -268,7 +269,8 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
                 onKeyDown={(e) => { if (e.key === 'Enter') handleJoin(); }}
               />
               <button className="mp-btn" onClick={() => handleJoin()} style={{
-                padding: '10px 20px',
+                padding: window.innerWidth < 500 ? '14px 20px' : '10px 20px',
+                width: window.innerWidth < 500 ? '100%' : undefined,
                 fontFamily: "'Orbitron'", fontSize: 11, fontWeight: 700, letterSpacing: 2,
                 border: '2px solid #667eea', borderRadius: 6,
                 background: '#667eea12', color: '#667eea', cursor: 'pointer',
@@ -402,12 +404,13 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
 
             {!myReady && (
               <button className="mp-btn" onClick={handleReady} style={{
-                width: '100%', padding: '14px',
+                width: '100%', padding: window.innerWidth < 500 ? '16px' : '14px',
                 fontFamily: "'Orbitron'", fontSize: 16, fontWeight: 900, letterSpacing: 5,
                 border: '2px solid #00f040', borderRadius: 8,
                 background: '#00f04012', color: '#00f040', cursor: 'pointer',
                 transition: 'all 0.2s',
                 boxShadow: '0 0 20px #00f04018',
+                minHeight: window.innerWidth < 500 ? 54 : undefined,
               }}>
                 READY
               </button>

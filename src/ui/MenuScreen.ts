@@ -110,6 +110,8 @@ export class MenuScreen {
     this.callbacks = callbacks;
     this.overlay = el('div');
     this.overlay.id = 'menu-overlay';
+    this.overlay.style.overflow = 'auto';
+    (this.overlay.style as any).WebkitOverflowScrolling = 'touch';
     this.content = el('div', 'menu-container');
     this.overlay.appendChild(this.content);
     document.body.appendChild(this.overlay);
@@ -169,6 +171,10 @@ export class MenuScreen {
     const isMobile = window.innerWidth < 600;
     const buildControlsGrid = (): void => {
       ctrlSection.replaceChildren();
+      if (window.innerWidth < 600) {
+        ctrlSection.style.display = 'none';
+        return;
+      }
       const deviceLabel = isMobile ? 'TOUCH' : 'KEYBOARD';
       const modeLabel = this.selectedMode === '3d' ? '3D' : '2D';
       ctrlSection.appendChild(el('div', 'menu-label', `CONTROLS \u2014 ${modeLabel} ${deviceLabel}`));
@@ -229,25 +235,26 @@ export class MenuScreen {
     this.content.appendChild(sizeSection);
     updateSizeVisibility();
 
-    // SFX volume
-    const sfxSection = el('div', 'menu-section');
-    sfxSection.appendChild(el('div', 'menu-label', 'SFX VOLUME'));
-    const savedSfx = parseFloat(localStorage.getItem('tetris_sfx_vol') ?? '0.7');
-    sfxSection.appendChild(slider('sfx-vol', savedSfx, (v) => {
-      localStorage.setItem('tetris_sfx_vol', String(v));
-      this.callbacks.onSfxVolume(v);
-    }));
-    this.content.appendChild(sfxSection);
+    // SFX volume + Music volume (hidden on mobile — sliders are hard to use on small screens)
+    if (window.innerWidth >= 600) {
+      const sfxSection = el('div', 'menu-section');
+      sfxSection.appendChild(el('div', 'menu-label', 'SFX VOLUME'));
+      const savedSfx = parseFloat(localStorage.getItem('tetris_sfx_vol') ?? '0.7');
+      sfxSection.appendChild(slider('sfx-vol', savedSfx, (v) => {
+        localStorage.setItem('tetris_sfx_vol', String(v));
+        this.callbacks.onSfxVolume(v);
+      }));
+      this.content.appendChild(sfxSection);
 
-    // Music volume
-    const musicSection = el('div', 'menu-section');
-    musicSection.appendChild(el('div', 'menu-label', 'MUSIC VOLUME'));
-    const savedMusic = parseFloat(localStorage.getItem('tetris_music_vol') ?? '0.5');
-    musicSection.appendChild(slider('music-vol', savedMusic, (v) => {
-      localStorage.setItem('tetris_music_vol', String(v));
-      this.callbacks.onMusicVolume(v);
-    }));
-    this.content.appendChild(musicSection);
+      const musicSection = el('div', 'menu-section');
+      musicSection.appendChild(el('div', 'menu-label', 'MUSIC VOLUME'));
+      const savedMusic = parseFloat(localStorage.getItem('tetris_music_vol') ?? '0.5');
+      musicSection.appendChild(slider('music-vol', savedMusic, (v) => {
+        localStorage.setItem('tetris_music_vol', String(v));
+        this.callbacks.onMusicVolume(v);
+      }));
+      this.content.appendChild(musicSection);
+    }
 
     // Start button
     const startAction = (): void => {

@@ -1373,15 +1373,15 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
       {countdown > 0 && (
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000000cc",borderRadius:6,zIndex:10}}>
-          <div key={countdown} style={{fontFamily:"'Orbitron'",fontSize:isMobile?48:72,fontWeight:900,color:"#00f0f0",
+          <div key={countdown} style={{fontFamily:"'Orbitron'",fontSize:isMobile?36:72,fontWeight:900,color:"#00f0f0",
             textShadow:"0 0 40px #00f0f088",animation:"countPulse 0.7s ease-out"}}>{countdown}</div>
         </div>
       )}
       {paused && (
         <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000000bb",borderRadius:6,zIndex:10}}>
-          <div style={{fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,color:"#f0f000",
+          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?16:22,fontWeight:700,color:"#f0f000",
             animation:"pulse 1.5s ease-in-out infinite",textShadow:"0 0 20px #f0f00066"}}>PAUSED</div>
-          <div style={{fontFamily:"'Orbitron'",fontSize:10,color:"#888",marginTop:12,letterSpacing:1}}>P / ESC to resume</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?8:10,color:"#888",marginTop:isMobile?8:12,letterSpacing:1}}>P / ESC to resume</div>
           <button onClick={() => window.dispatchEvent(new CustomEvent('tetris2d-exit'))} style={{
             fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,letterSpacing:2,marginTop:20,
             padding:"8px 20px",border:"1px solid #f0f00066",borderRadius:6,
@@ -1458,28 +1458,29 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       )}
 
       {/* Header */}
-      <div style={{display:"flex",alignItems:"center",gap:isMobile?6:12,marginBottom:isMobile?4:8,
-        width:totalWidth,maxWidth:"98vw",justifyContent:"space-between",flexWrap:"wrap"}}>
-        <button className="menu-btn" onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:2,
-          padding:"4px 10px",border:"1px solid rgba(255,255,255,0.4)",borderRadius:4,background:"rgba(255,255,255,0.2)",color:"rgba(60,80,110,0.8)",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
-        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?8:10,color:isZen?"rgba(80,100,140,0.7)":"rgba(60,80,110,0.7)",letterSpacing:isMobile?1:2,textAlign:"center",flex:isMobile?1:undefined,minWidth:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:isMobile?4:12,marginBottom:isMobile?2:8,
+        width:totalWidth,maxWidth:"98vw",justifyContent:"space-between",flexWrap:"nowrap",
+        height:isMobile?28:undefined,minHeight:isMobile?28:undefined}}>
+        <button className="menu-btn" onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:isMobile?7:9,fontWeight:700,letterSpacing:isMobile?1:2,
+          padding:isMobile?"2px 6px":"4px 10px",border:"1px solid rgba(255,255,255,0.4)",borderRadius:4,background:"rgba(255,255,255,0.2)",color:"rgba(60,80,110,0.8)",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
+        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?7:10,color:isZen?"rgba(80,100,140,0.7)":"rgba(60,80,110,0.7)",letterSpacing:isMobile?1:2,textAlign:"center",flex:1,minWidth:0,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
           {challenge.icon} {challenge.name}{" "}
-          {!isZen && <span style={{color:DIFF_COLORS[difficulty],fontSize:isMobile?7:9}}>{difficulty.toUpperCase()}</span>}
+          {!isZen && <span style={{color:DIFF_COLORS[difficulty],fontSize:isMobile?6:9}}>{difficulty.toUpperCase()}</span>}
         </div>
         {isZen ? (
-          <div style={{minWidth:isMobile?44:56}} />
+          <div style={{minWidth:isMobile?36:56}} />
         ) : config.timeLimit > 0 ? (
-          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?14:18,fontWeight:900,color:timerColor,
+          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?12:18,fontWeight:900,color:timerColor,
             textShadow:`0 0 12px ${timerColor}55`,animation:timerUrgent?"urgentPulse 0.5s ease-in-out infinite":"none",
-            minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
+            minWidth:isMobile?36:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
         ) : (
-          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?11:14,fontWeight:700,color:"rgba(60,80,110,0.6)",minWidth:isMobile?44:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?10:14,fontWeight:700,color:"rgba(60,80,110,0.6)",minWidth:isMobile?36:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
         )}
       </div>
 
       {/* Progress */}
       {challenge.goal !== "none" && (
-        <div style={{width:totalWidth,maxWidth:"98vw",height:3,background:"rgba(255,255,255,0.3)",borderRadius:2,marginBottom:isMobile?4:8}}>
+        <div style={{width:totalWidth,maxWidth:"98vw",height:isMobile?2:3,background:"rgba(255,255,255,0.3)",borderRadius:2,marginBottom:isMobile?2:8}}>
           <div style={{height:"100%",borderRadius:2,transition:"width 0.35s ease-out",width:`${progress*100}%`,
             background:progress>0.85?"linear-gradient(90deg,#00a0c0,#00b040)":"#00a0c0",
             boxShadow:`0 0 8px ${progress>0.85?"#00b040":"#00a0c0"}44`}} />
