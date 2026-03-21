@@ -6,9 +6,9 @@ const ROWS = 20;
 const getCellSize = () => {
   const mobile = window.innerWidth < 600;
   if (mobile) {
-    // Calculate max cell size that fits everything vertically
-    // Need: header(28) + progress(4) + board(ROWS*cell) + infoStrip(32) + controls(132) + margins(20)
-    const availH = window.innerHeight - 216; // 216px for all non-board UI
+    // Calculate max cell size that fits vertically
+    // Need: header(28) + scoreBar(30) + board(ROWS*cell) + controls(140) + margins(16)
+    const availH = window.innerHeight - 214;
     const maxByHeight = Math.floor(availH / ROWS);
     const maxByWidth = Math.floor((window.innerWidth - 20) / (COLS + 1));
     return Math.max(16, Math.min(maxByHeight, maxByWidth));
@@ -1444,8 +1444,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         @keyframes zenFloat{0%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-40px) scale(1.3);opacity:0.6}100%{transform:translateY(0) scale(1);opacity:0.3}}
         @keyframes zenBoardGlow{0%,100%{box-shadow:0 0 20px rgba(100,150,200,0.15),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 0 40px rgba(100,150,200,0.3),inset 0 0 60px #00000055, 0 8px 32px rgba(0,0,0,0.5)}}
         .menu-btn:hover{color:rgba(40,60,90,0.9)!important;border-color:rgba(255,255,255,0.6)!important}
-        .touch-btn{-webkit-tap-highlight-color:transparent;transition:transform 0.06s,background 0.06s}
-        .touch-btn:active{background:rgba(255,255,255,0.15)!important;transform:scale(0.92)}
+        .touch-btn{-webkit-tap-highlight-color:transparent;transition:transform 0.05s,background 0.05s,border-color 0.05s}
+        .touch-btn:active{background:rgba(100,140,255,0.15)!important;border-color:rgba(100,140,255,0.3)!important;transform:scale(0.94)}
       `}</style>
 
       {/* Zen floating particles */}
@@ -1519,39 +1519,43 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
       {/* ==== MOBILE LAYOUT ==== */}
       {isMobile && (
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:"98vw"}}>
-          {/* Board centered */}
-          {boardEl}
-
-          {/* Compact info strip below board */}
-          <div style={{display:"flex",gap:4,marginTop:4,width:boardWidth+4,justifyContent:"space-between",alignItems:"stretch"}}>
-            <div style={{flex:"0 0 auto"}}>{holdPanel}</div>
-            <div style={{flex:"1 1 auto",display:"flex",alignItems:"center",justifyContent:"center",gap:12,
-              background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"4px 8px",border:"1px solid rgba(255,255,255,0.05)"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:"100%",paddingBottom:150}}>
+          {/* Score bar above board */}
+          <div style={{display:"flex",width:boardWidth+4,justifyContent:"space-between",alignItems:"center",
+            marginBottom:3,padding:"0 2px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{flex:"0 0 auto"}}>{holdPanel}</div>
+              {!isZen && (
+                <span style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
+              )}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
               {isZen ? (
-                <span style={{fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#a0b8e0"}}>{lines} lines</span>
+                <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:700,color:"#a0b8e0"}}>{lines} lines</span>
               ) : (
                 <>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#e0a040"}}>{target && challenge.goal === "lines" ? `${lines}/${target}` : `${lines}ln`}</span>
+                  <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:700,color:"#e0a040"}}>
+                    {target && challenge.goal === "lines" ? `${lines}/${target}` : `L${level}`}
+                  </span>
                   {combo > 1 && (
-                    <span style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:900,color:"#e060a0"}}>{combo}x</span>
+                    <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:900,color:"#e060a0"}}>{combo}x</span>
                   )}
                 </>
               )}
+              <div style={{flex:"0 0 auto"}}>{nextPanel}</div>
             </div>
-            <div style={{flex:"0 0 auto"}}>{nextPanel}</div>
           </div>
 
+          {/* Board */}
+          {boardEl}
         </div>
       )}
 
       {/* Mobile controls fixed at bottom */}
       {isMobile && (
-        <div style={{position:'fixed', bottom: 0, left: 0, right: 0,
-          paddingBottom: 'env(safe-area-inset-bottom, 8px)',
-          background: 'rgba(10,14,26,0.95)',
-          zIndex: 20, padding: '8px 8px calc(8px + env(safe-area-inset-bottom, 0px))'}}>
+        <div style={{position:'fixed', bottom:0, left:0, right:0,
+          background:'linear-gradient(180deg, rgba(10,14,26,0.0) 0%, rgba(10,14,26,0.95) 15%)',
+          zIndex:20, padding:'16px 12px calc(10px + env(safe-area-inset-bottom, 0px))'}}>
           <MobileTouchControls
             onMove={move} onRotate={rotatePiece} onDrop={drop}
             onHardDrop={hardDrop} onHold={holdPiece}
@@ -1565,8 +1569,6 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
   const dasTimeoutRef = useRef(null);
   const dasIntervalRef = useRef(null);
-  const DAS_DELAY = 150;
-  const DAS_RATE = 45;
 
   const stopRepeat = useCallback(() => {
     if (dasTimeoutRef.current) { clearTimeout(dasTimeoutRef.current); dasTimeoutRef.current = null; }
@@ -1574,61 +1576,57 @@ function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
   }, []);
 
   const startRepeat = useCallback((action) => {
-    stopRepeat(); // clear any existing repeat first
+    stopRepeat();
     action();
     dasTimeoutRef.current = setTimeout(() => {
       dasTimeoutRef.current = null;
-      dasIntervalRef.current = setInterval(action, DAS_RATE);
-    }, DAS_DELAY);
+      dasIntervalRef.current = setInterval(action, 40);
+    }, 130);
   }, [stopRepeat]);
 
   useEffect(() => () => stopRepeat(), []);
 
-  const holdBtn = (label, action, flex) => (
+  const bStyle = (accent) => ({
+    border: `1.5px solid ${accent ? 'rgba(100,140,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
+    borderRadius: 14,
+    background: accent ? 'rgba(80,120,255,0.08)' : 'rgba(255,255,255,0.04)',
+    color: accent ? 'rgba(140,180,255,0.85)' : 'rgba(180,200,230,0.6)',
+    display:'flex', alignItems:'center', justifyContent:'center',
+    cursor:'pointer', touchAction:'manipulation',
+    WebkitTapHighlightColor:'transparent',
+    fontFamily:"'Orbitron',monospace", fontWeight:700,
+  });
+
+  const hold = (label, action, style) => (
     <button className="touch-btn"
       onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); startRepeat(action); }}
       onTouchEnd={(e) => { e.preventDefault(); stopRepeat(); }}
       onTouchCancel={() => stopRepeat()}
-      onMouseDown={(e) => { e.preventDefault(); startRepeat(action); }}
-      onMouseUp={() => stopRepeat()}
-      onMouseLeave={() => stopRepeat()}
-      style={{
-        fontFamily:"'Orbitron'",fontSize:label.length>2?11:22,fontWeight:700,
-        flex:flex||"1 1 0",height:58,minWidth:52,
-        border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,
-        background:"rgba(255,255,255,0.05)",color:"rgba(180,200,230,0.7)",
-        display:"flex",alignItems:"center",justifyContent:"center",
-        cursor:"pointer",letterSpacing:label.length>2?2:0,
-        WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
-      }}>{label}</button>
+      style={style}>{label}</button>
   );
 
-  const tapBtn = (label, action, flex) => (
+  const tap = (label, action, style) => (
     <button className="touch-btn"
       onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); action(); }}
-      onMouseDown={(e) => { e.preventDefault(); action(); }}
-      style={{
-        fontFamily:"'Orbitron'",fontSize:label.length>2?11:22,fontWeight:700,
-        flex:flex||"1 1 0",height:58,minWidth:52,
-        border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,
-        background:"rgba(255,255,255,0.05)",color:"rgba(180,200,230,0.7)",
-        display:"flex",alignItems:"center",justifyContent:"center",
-        cursor:"pointer",letterSpacing:label.length>2?2:0,
-        WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
-      }}>{label}</button>
+      style={style}>{label}</button>
   );
 
+  // Two-zone layout: LEFT side = movement, RIGHT side = actions
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8,width:"100%",maxWidth:360,padding:"0 8px"}}>
-      <div style={{display:"flex",gap:8}}>
-        {holdBtn("◀", () => onMove(-1))}
-        {holdBtn("▼", onDrop)}
-        {tapBtn("↻", onRotate)}
-        {holdBtn("▶", () => onMove(1))}
+    <div style={{display:'flex', gap:12, width:'100%', maxWidth:400, margin:'0 auto'}}>
+      {/* LEFT: D-pad movement */}
+      <div style={{flex:'1 1 50%', display:'flex', flexDirection:'column', gap:6}}>
+        <div style={{display:'flex', gap:6}}>
+          {hold("◀", () => onMove(-1), {...bStyle(false), flex:'1 1 0', height:52, fontSize:24})}
+          {hold("▼", onDrop, {...bStyle(false), flex:'1 1 0', height:52, fontSize:24})}
+          {hold("▶", () => onMove(1), {...bStyle(false), flex:'1 1 0', height:52, fontSize:24})}
+        </div>
+        {tap("⬇  HARD DROP", onHardDrop, {...bStyle(true), width:'100%', height:44, fontSize:12, letterSpacing:2})}
       </div>
-      <div style={{display:"flex",gap:8}}>
-        {tapBtn("HOLD", onHold)}
-        {tapBtn("⬇ DROP", onHardDrop, "2 1 0")}
+      {/* RIGHT: Rotate + Hold */}
+      <div style={{flex:'1 1 50%', display:'flex', flexDirection:'column', gap:6}}>
+        {tap("↻  ROTATE", onRotate, {...bStyle(true), width:'100%', height:52, fontSize:13, letterSpacing:2})}
+        {tap("HOLD", onHold, {...bStyle(false), width:'100%', height:44, fontSize:12, letterSpacing:3})}
       </div>
     </div>
   );
