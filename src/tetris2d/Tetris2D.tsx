@@ -710,14 +710,18 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     }, LOCK_DELAY);
   }, [clearLockTimer]);
 
+  const labelTimers = useRef([]);
   const addLabel = useCallback((text, color, yOffset=0) => {
     const id = ++labelId.current;
     const boardW = COLS * (CELL+1);
     setActionLabels(prev => [...prev, {id, text, color, x: boardW/2, y: ROWS*(CELL+1)/2 - 30 + yOffset}]);
-    setTimeout(() => setActionLabels(prev => prev.filter(l => l.id !== id)), 1200);
+    labelTimers.current.push(setTimeout(() => setActionLabels(prev => prev.filter(l => l.id !== id)), 1200));
   }, [CELL]);
 
-  // Cleanup audio on unmount
+  // Cleanup timers + audio on unmount
+  useEffect(() => {
+    return () => { labelTimers.current.forEach(t => clearTimeout(t)); };
+  }, []);
   useEffect(() => {
     return () => { audio.stopMusic(); };
   }, [audio]);

@@ -278,6 +278,7 @@ export default function PhysicsTetris() {
     let activePiece: any = null;
     let settleCounter = 0;
     let settledBodies: any[] = [];
+    let resettleTimer: any = null;
     let nextType = bag.next();
     let lastTime = performance.now();
 
@@ -471,7 +472,8 @@ export default function PhysicsTetris() {
         // After a delay, re-settle the falling pieces
         // Capture references now — settledBodies may change before timeout fires
         const bodiesToResettle = settledBodies.filter(b => !b.isStatic);
-        setTimeout(() => {
+        if (resettleTimer) clearTimeout(resettleTimer);
+        resettleTimer = setTimeout(() => {
           for (const body of bodiesToResettle) {
             if (!body.isStatic) {
               const vel = body.velocity;
@@ -794,10 +796,10 @@ export default function PhysicsTetris() {
 
     function cleanup() {
       cancelAnimationFrame(frameId);
+      if (resettleTimer) clearTimeout(resettleTimer);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       Engine.clear(engine);
-      // Clear world composites
       Composite.clear(engine.world, false);
     }
 
