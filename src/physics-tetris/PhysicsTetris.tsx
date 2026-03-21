@@ -569,16 +569,47 @@ export default function PhysicsTetris() {
         remaining -= step;
       }
 
-      // Settling detection
+      // Settling detection — only lock if piece is resting on floor or another piece
       if (activePiece) {
         const vel = activePiece.velocity;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y) + Math.abs(activePiece.angularVelocity);
-        if (speed < 0.5 && activePiece.position.y > offsetY) {
+        const isSlowEnough = speed < 0.5;
+
+        // Check if piece is supported — bottom must be near floor or near a settled body
+        const pieceBottom = activePiece.bounds.max.y;
+        const floorY = offsetY + chamberH;
+        const nearFloor = pieceBottom > floorY - cellSize * 0.5;
+
+        let nearSettled = false;
+        if (!nearFloor) {
+          for (const settled of settledBodies) {
+            // Is the settled piece directly below this one (vertically close, horizontally overlapping)?
+            const sTop = settled.bounds.min.y;
+            const verticalGap = sTop - pieceBottom;
+            const hOverlap = activePiece.bounds.max.x > settled.bounds.min.x + 2 &&
+                             activePiece.bounds.min.x < settled.bounds.max.x - 2;
+            if (verticalGap < cellSize * 0.5 && verticalGap > -cellSize * 0.5 && hOverlap) {
+              nearSettled = true;
+              break;
+            }
+          }
+        }
+
+        const isSupported = nearFloor || nearSettled;
+
+        if (isSlowEnough && isSupported) {
           settleCounter++;
         } else {
-          settleCounter = Math.max(0, settleCounter - 1);
+          settleCounter = Math.max(0, settleCounter - 2);
         }
-        if (settleCounter > 60) { // ~1 second of stillness before locking
+
+        // If piece is stuck in air (not supported) and barely moving, give it a nudge down
+        if (isSlowEnough && !isSupported && activePiece.position.y > offsetY) {
+          Body.applyForce(activePiece, activePiece.position, { x: 0, y: 0.005 * (activePiece.mass || 1) });
+          settleCounter = 0;
+        }
+
+        if (settleCounter > 50) { // ~0.8 seconds of supported stillness
           lockPiece();
           if (!gameOver) spawnPiece();
         }
