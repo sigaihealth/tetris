@@ -229,6 +229,7 @@ function drawPiecePreview(ctx: CanvasRenderingContext2D, type: string, x: number
 export default function PhysicsTetris() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<any>(null);
+  const keysObjRef = useRef<Record<string, boolean>>({});
 
   const init = useCallback(() => {
     const canvas = canvasRef.current;
@@ -282,6 +283,7 @@ export default function PhysicsTetris() {
 
     // Keys state
     const keys: Record<string, boolean> = {};
+    keysObjRef.current = keys;
 
     function spawnPiece() {
       const type = nextType;
@@ -467,8 +469,10 @@ export default function PhysicsTetris() {
         for (const body of settledBodies) markOccupied(body);
 
         // After a delay, re-settle the falling pieces
+        // Capture references now — settledBodies may change before timeout fires
+        const bodiesToResettle = settledBodies.filter(b => !b.isStatic);
         setTimeout(() => {
-          for (const body of settledBodies) {
+          for (const body of bodiesToResettle) {
             if (!body.isStatic) {
               const vel = body.velocity;
               const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
@@ -822,37 +826,27 @@ export default function PhysicsTetris() {
     return () => window.removeEventListener('resize', onResize);
   }, [init]);
 
-  // Expose keys ref so touch buttons can set them
-  const keysRef = useRef({});
-  useEffect(() => {
-    keysRef.current = {};
-  }, []);
-
-  // Touch button handlers — set/clear keys just like keyboard
-  const touchStart = useCallback((code) => {
-    keysRef.current[code] = true;
-    // For one-shot actions (rotate, slam), also trigger via a custom event
-    if (code === 'ArrowUp' || code === 'Space') {
-      window.dispatchEvent(new KeyboardEvent('keydown', { code }));
-    }
-  }, []);
-  const touchEnd = useCallback((code) => {
-    keysRef.current[code] = false;
-  }, []);
-
-  // Patch keys in the game loop — merge touch keys into the existing keys object
-  // We do this by overriding the init effect to also read keysRef
-  // Actually simpler: just dispatch keydown/keyup events from touch buttons
-
   const isMobile = typeof window !== 'undefined' && (window.innerWidth < 700 || 'ontouchstart' in window);
 
-  // Touch button component
+  // Touch button component — directly sets the keys object used by the game loop
   const TB = useCallback(({ label, code, wide, tall }) => (
     <button
-      onTouchStart={(e) => { e.preventDefault(); window.dispatchEvent(new KeyboardEvent('keydown', { code })); }}
-      onTouchEnd={(e) => { e.preventDefault(); window.dispatchEvent(new KeyboardEvent('keyup', { code })); }}
-      onMouseDown={() => window.dispatchEvent(new KeyboardEvent('keydown', { code }))}
-      onMouseUp={() => window.dispatchEvent(new KeyboardEvent('keyup', { code }))}
+      onTouchStart={(e) => {
+        e.preventDefault();
+        keysObjRef.current[code] = true;
+        // One-shot actions still need the keydown handler for rotate/slam logic
+        if (code === 'ArrowUp' || code === 'Space') {
+          window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+        }
+      }}
+      onTouchEnd={(e) => { e.preventDefault(); keysObjRef.current[code] = false; }}
+      onMouseDown={() => {
+        keysObjRef.current[code] = true;
+        if (code === 'ArrowUp' || code === 'Space') {
+          window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+        }
+      }}
+      onMouseUp={() => { keysObjRef.current[code] = false; }}
       style={{
         width: wide ? '30%' : '20%', maxWidth: wide ? 100 : 70, minWidth: wide ? 80 : 52, height: 56,
         borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)',

@@ -555,7 +555,11 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
       const gc = garbageQueue.current;
       garbageQueue.current = 0;
       // Brief delay so the piece appears before garbage pushes the board up
-      setTimeout(() => applyGarbage(gc), 100);
+      setTimeout(() => {
+        if (!matchResultRef.current && !gameOverRef.current) {
+          applyGarbage(gc);
+        }
+      }, 100);
     }
   }, [dequeue, peek, clearLockTimer, applyGarbage, audio, peerManager]);
 

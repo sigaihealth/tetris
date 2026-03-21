@@ -138,6 +138,7 @@ class App {
     window.addEventListener('beforeunload', (e) => {
       if (this.state !== 'menu') {
         e.preventDefault();
+        e.returnValue = '';
       }
     });
 

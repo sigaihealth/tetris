@@ -676,6 +676,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
   const dasRepeat = useRef(null);
   const lockedCellsRef = useRef(new Set());
   const [lockedCells, setLockedCells] = useState(new Set());
+  const lockGenRef = useRef(0);
 
   // Keep refs in sync
   boardRef.current = board;
@@ -836,7 +837,14 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         if (c.shape[r][cc]) newLocked.add(`${p.r+r},${p.c+cc}`);
     lockedCellsRef.current = newLocked;
     setLockedCells(new Set(newLocked));
-    setTimeout(() => { lockedCellsRef.current = new Set(); setLockedCells(new Set()); }, 600);
+    lockGenRef.current++;
+    const gen = lockGenRef.current;
+    setTimeout(() => {
+      if (lockGenRef.current === gen) {
+        lockedCellsRef.current = new Set();
+        setLockedCells(new Set());
+      }
+    }, 600);
 
     const b = mergeBoard(boardRef.current, c.shape, c.color, p.r, p.c);
     const {board:nb, cleared} = clearLines(b);
@@ -1305,9 +1313,9 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
                 position:"absolute", left:gX-P, top:gY-P, width:gW+P*2, height:gH+P*2,
                 background:jellyBg,
                 // SVG mask with rounded rects for organic shape
-                WebkitMaskImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${gW+P*2}' height='${gH+P*2}'>${g.cells.map(([r,c])=>`<rect x='${(c-g.minC)*CELL}' y='${(r-g.minR)*CELL}' width='${CELL+P*2}' height='${CELL+P*2}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`,
+                WebkitMaskImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${Math.round(gW+P*2)}' height='${Math.round(gH+P*2)}'>${g.cells.map(([r,c])=>`<rect x='${Math.round((c-g.minC)*CELL)}' y='${Math.round((r-g.minR)*CELL)}' width='${Math.round(CELL+P*2)}' height='${Math.round(CELL+P*2)}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`,
                 WebkitMaskSize:"100% 100%",
-                maskImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${gW+P*2}' height='${gH+P*2}'>${g.cells.map(([r,c])=>`<rect x='${(c-g.minC)*CELL}' y='${(r-g.minR)*CELL}' width='${CELL+P*2}' height='${CELL+P*2}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`,
+                maskImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${Math.round(gW+P*2)}' height='${Math.round(gH+P*2)}'>${g.cells.map(([r,c])=>`<rect x='${Math.round((c-g.minC)*CELL)}' y='${Math.round((r-g.minR)*CELL)}' width='${Math.round(CELL+P*2)}' height='${Math.round(CELL+P*2)}' rx='${CR}' ry='${CR}' fill='white'/>`).join('')}</svg>`)}")`,
                 maskSize:"100% 100%",
                 // Premium 3D liquid glass
                 backgroundImage:[
