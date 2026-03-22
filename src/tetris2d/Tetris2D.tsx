@@ -1096,36 +1096,46 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       }
     }, 300);
   };
+  const touchVertLock = useRef(false); // locks out horizontal moves during vertical swipe
   const onTouchMove = (e) => {
     if (!touchStart.current) return;
     const t = e.touches[0];
     const dx = t.clientX - touchStart.current.x;
     const dy = t.clientY - touchStart.current.y;
-    // Horizontal drag: move piece by whole columns
-    const colsMoved = Math.round(dx / (CELL * 0.8));
-    const colsDelta = colsMoved - touchDragCols.current;
-    if (colsDelta !== 0) {
+
+    // If strong downward or upward motion detected, lock out horizontal moves
+    if (Math.abs(dy) > CELL && Math.abs(dy) > Math.abs(dx) * 1.2) {
+      touchVertLock.current = true;
       touchMoved.current = true;
       if (softDropTimer.current) { clearTimeout(softDropTimer.current); clearInterval(softDropTimer.current); softDropTimer.current = null; }
-      for (let i = 0; i < Math.abs(colsDelta); i++) moveRefTouch.current(colsDelta > 0 ? 1 : -1);
-      touchDragCols.current = colsMoved;
     }
-    // Vertical drag down: if dragged > 1.5 cells down, mark as drop gesture
-    if (dy > CELL * 1.5) touchMoved.current = true;
+
+    // Horizontal drag: only if not locked to vertical
+    if (!touchVertLock.current) {
+      const colsMoved = Math.round(dx / (CELL * 0.8));
+      const colsDelta = colsMoved - touchDragCols.current;
+      if (colsDelta !== 0) {
+        touchMoved.current = true;
+        if (softDropTimer.current) { clearTimeout(softDropTimer.current); clearInterval(softDropTimer.current); softDropTimer.current = null; }
+        for (let i = 0; i < Math.abs(colsDelta); i++) moveRefTouch.current(colsDelta > 0 ? 1 : -1);
+        touchDragCols.current = colsMoved;
+      }
+    }
   };
   const onTouchEnd = (e) => {
     if (softDropTimer.current) { clearTimeout(softDropTimer.current); clearInterval(softDropTimer.current); softDropTimer.current = null; }
-    if (!touchStart.current || !started || gameOver || paused) return;
+    if (!touchStart.current || !started || gameOver || paused) { touchVertLock.current = false; return; }
     const dx = e.changedTouches[0].clientX - touchStart.current.x;
     const dy = e.changedTouches[0].clientY - touchStart.current.y;
     const dt = Date.now() - touchStart.current.t;
+    touchVertLock.current = false;
     if (!touchMoved.current && Math.abs(dx) < 12 && Math.abs(dy) < 12 && dt < 300) {
       // Quick tap = rotate
       rotateRefTouch.current();
-    } else if (dy > CELL * 2 && Math.abs(dy) > Math.abs(dx) * 1.5) {
-      // Strong swipe down = hard drop
+    } else if (dy > CELL * 1.5 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+      // Swipe down = hard drop (lower threshold, wider angle tolerance)
       hardDropRefTouch.current();
-    } else if (dy < -CELL * 1.5 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+    } else if (dy < -CELL * 1.5 && Math.abs(dy) > Math.abs(dx) * 1.2) {
       // Swipe up = hold
       holdRefTouch.current();
     }

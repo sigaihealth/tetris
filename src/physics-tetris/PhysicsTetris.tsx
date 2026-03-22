@@ -255,7 +255,7 @@ export default function PhysicsTetris() {
     engine.velocityIterations = 8;   // default 4 — more = more stable
 
     // Walls (static) — very slippery so pieces don't stick
-    const wallOpts = { isStatic: true, label: 'wall', friction: 0.02, frictionStatic: 0.02, restitution: 0.1 };
+    const wallOpts = { isStatic: true, label: 'wall', friction: 0, frictionStatic: 0, restitution: 0.05 };
     const leftWall = Bodies.rectangle(
       offsetX - wallThickness / 2, offsetY + chamberH / 2,
       wallThickness, chamberH + wallThickness, wallOpts,
@@ -610,9 +610,18 @@ export default function PhysicsTetris() {
           settleCounter = Math.max(0, settleCounter - 2);
         }
 
-        // If piece is stuck in air (not supported) and barely moving, give it a nudge down
+        // If piece is stuck in air (not supported) and barely moving, unstick it
         if (isSlowEnough && !isSupported && activePiece.position.y > offsetY) {
-          Body.applyForce(activePiece, activePiece.position, { x: 0, y: 0.005 * (activePiece.mass || 1) });
+          // Strong downward nudge
+          Body.applyForce(activePiece, activePiece.position, { x: 0, y: 0.02 * (activePiece.mass || 1) });
+          // If near a wall, push away from it
+          const bMin = activePiece.bounds.min.x;
+          const bMax = activePiece.bounds.max.x;
+          if (bMin < offsetX + cellSize * 0.5) {
+            Body.applyForce(activePiece, activePiece.position, { x: 0.01 * (activePiece.mass || 1), y: 0 });
+          } else if (bMax > offsetX + chamberW - cellSize * 0.5) {
+            Body.applyForce(activePiece, activePiece.position, { x: -0.01 * (activePiece.mass || 1), y: 0 });
+          }
           settleCounter = 0;
         }
 
