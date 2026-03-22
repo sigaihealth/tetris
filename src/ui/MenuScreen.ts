@@ -128,6 +128,7 @@ export class MenuScreen {
         animation: floatBlock ${8 + i * 2}s ease-in-out infinite;
         animation-delay: ${i * 1.5}s;
         pointer-events: none;
+        z-index: 0;
       `;
       this.overlay.appendChild(block);
     }
@@ -173,7 +174,7 @@ export class MenuScreen {
     const ctrlSection = el('div', 'controls-ref');
     const isMobile = window.innerWidth < 600;
     let controlsExpanded = false;
-    const ctrlToggle = btn('menu-btn', 'Show Controls', () => {
+    const ctrlToggle = btn('menu-btn ctrl-toggle', 'Show Controls', () => {
       controlsExpanded = !controlsExpanded;
       ctrlToggle.textContent = controlsExpanded ? 'Hide Controls' : 'Show Controls';
       ctrlContent.style.display = controlsExpanded ? '' : 'none';
