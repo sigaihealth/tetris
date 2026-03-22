@@ -567,11 +567,25 @@ export default function PhysicsTetris() {
       }
 
       // Step physics — use small fixed steps to prevent tunneling
+      // Clamp position BEFORE physics step too
+      if (activePiece) {
+        const ab = activePiece.bounds;
+        if (ab.min.x < offsetX) Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX - ab.min.x + 3), y: activePiece.position.y });
+        if (ab.max.x > offsetX + chamberW) Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX + chamberW - ab.max.x - 3), y: activePiece.position.y });
+      }
+
       const maxStep = 16.67;
       let remaining = dt;
       while (remaining > 0) {
         const step = Math.min(remaining, maxStep);
         Engine.update(engine, step);
+        // Clamp INSIDE each sub-step too
+        if (activePiece) {
+          const ab = activePiece.bounds;
+          if (ab.min.x < offsetX) { Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX - ab.min.x + 2), y: activePiece.position.y }); Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y }); }
+          if (ab.max.x > offsetX + chamberW) { Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX + chamberW - ab.max.x - 2), y: activePiece.position.y }); Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y }); }
+          if (ab.max.y > offsetY + chamberH) { Body.setPosition(activePiece, { x: activePiece.position.x, y: activePiece.position.y + (offsetY + chamberH - ab.max.y) }); Body.setVelocity(activePiece, { x: activePiece.velocity.x, y: 0 }); }
+        }
         remaining -= step;
       }
 
