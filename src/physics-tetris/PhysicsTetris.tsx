@@ -533,20 +533,31 @@ export default function PhysicsTetris() {
         return;
       }
 
-      // Apply forces from keys — strong, responsive controls
+      // Move piece via direct velocity (not forces — forces can accumulate and pierce walls)
       if (activePiece) {
-        const forceMag = 0.025 * (activePiece.mass || 1);
+        const moveSpeed = 2.5;
+        const ab = activePiece.bounds;
+        const leftEdge = offsetX;
+        const rightEdge = offsetX + chamberW;
 
         if (keys['ArrowLeft'] || keys['KeyA']) {
-          Body.applyForce(activePiece, activePiece.position, { x: -forceMag, y: 0 });
-          if (activePiece.velocity.x < -3) Body.setVelocity(activePiece, { x: -3, y: activePiece.velocity.y });
-        }
-        if (keys['ArrowRight'] || keys['KeyD']) {
-          Body.applyForce(activePiece, activePiece.position, { x: forceMag, y: 0 });
-          if (activePiece.velocity.x > 3) Body.setVelocity(activePiece, { x: 3, y: activePiece.velocity.y });
+          if (ab.min.x > leftEdge + 2) { // only move if not at wall
+            Body.setVelocity(activePiece, { x: -moveSpeed, y: activePiece.velocity.y });
+          } else {
+            Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y });
+          }
+        } else if (keys['ArrowRight'] || keys['KeyD']) {
+          if (ab.max.x < rightEdge - 2) { // only move if not at wall
+            Body.setVelocity(activePiece, { x: moveSpeed, y: activePiece.velocity.y });
+          } else {
+            Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y });
+          }
+        } else {
+          // No horizontal input — dampen horizontal velocity
+          Body.setVelocity(activePiece, { x: activePiece.velocity.x * 0.85, y: activePiece.velocity.y });
         }
         if (keys['ArrowDown'] || keys['KeyS']) {
-          Body.applyForce(activePiece, activePiece.position, { x: 0, y: forceMag * 3 });
+          Body.setVelocity(activePiece, { x: activePiece.velocity.x, y: Math.max(activePiece.velocity.y, 4) });
         }
 
         // Angular damping — strongly resist spinning so pieces stay flat
@@ -611,12 +622,11 @@ export default function PhysicsTetris() {
         }
       }
 
-      // Also cap horizontal velocity to prevent wall-piercing swipes
+      // Hard cap velocity — absolute max, no exceptions
       if (activePiece) {
         const vx = activePiece.velocity.x;
-        const maxVx = 3;
-        if (Math.abs(vx) > maxVx) {
-          Body.setVelocity(activePiece, { x: Math.sign(vx) * maxVx, y: activePiece.velocity.y });
+        if (Math.abs(vx) > 2.5) {
+          Body.setVelocity(activePiece, { x: Math.sign(vx) * 2.5, y: activePiece.velocity.y });
         }
       }
 
