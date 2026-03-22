@@ -7,8 +7,8 @@ const getCellSize = () => {
   const mobile = window.innerWidth < 600;
   if (mobile) {
     // Calculate max cell size that fits vertically
-    // Need: header(28) + scoreBar(30) + board(ROWS*cell) + controls(160) + margins(16)
-    const availH = window.innerHeight - 234;
+    // Need: scoreBar(26) + board(ROWS*cell) + controls(80) + margins(16)
+    const availH = window.innerHeight - 122;
     const maxByHeight = Math.floor(availH / ROWS);
     const maxByWidth = Math.floor((window.innerWidth - 20) / (COLS + 1));
     return Math.max(16, Math.min(maxByHeight, maxByWidth));
@@ -1523,30 +1523,31 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",gap:isMobile?4:12,marginBottom:isMobile?2:8,
-        width:totalWidth,maxWidth:"98vw",justifyContent:"space-between",flexWrap:"nowrap",
-        height:isMobile?28:undefined,minHeight:isMobile?28:undefined}}>
-        <button className="menu-btn" onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:isMobile?7:9,fontWeight:700,letterSpacing:isMobile?1:2,
-          padding:isMobile?"2px 6px":"4px 10px",border:"1px solid rgba(255,255,255,0.4)",borderRadius:4,background:"rgba(255,255,255,0.2)",color:"rgba(60,80,110,0.8)",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
-        <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?7:10,color:isZen?"rgba(80,100,140,0.7)":"rgba(60,80,110,0.7)",letterSpacing:isMobile?1:2,textAlign:"center",flex:1,minWidth:0,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
+      {/* Header — desktop only, mobile uses score bar */}
+      {!isMobile && (
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8,
+        width:totalWidth,maxWidth:"98vw",justifyContent:"space-between",flexWrap:"nowrap"}}>
+        <button className="menu-btn" onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:9,fontWeight:700,letterSpacing:2,
+          padding:"4px 10px",border:"1px solid rgba(255,255,255,0.4)",borderRadius:4,background:"rgba(255,255,255,0.2)",color:"rgba(60,80,110,0.8)",cursor:"pointer",transition:"all 0.15s"}}>{"\u2190"} MENU</button>
+        <div style={{fontFamily:"'Orbitron'",fontSize:10,color:isZen?"rgba(80,100,140,0.7)":"rgba(60,80,110,0.7)",letterSpacing:2,textAlign:"center",flex:1,minWidth:0,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
           {challenge.icon} {challenge.name}{" "}
-          {!isZen && <span style={{color:DIFF_COLORS[difficulty],fontSize:isMobile?6:9}}>{difficulty.toUpperCase()}</span>}
+          {!isZen && <span style={{color:DIFF_COLORS[difficulty],fontSize:9}}>{difficulty.toUpperCase()}</span>}
         </div>
         {isZen ? (
-          <div style={{minWidth:isMobile?36:56}} />
+          <div style={{minWidth:56}} />
         ) : config.timeLimit > 0 ? (
-          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?12:18,fontWeight:900,color:timerColor,
+          <div style={{fontFamily:"'Orbitron'",fontSize:18,fontWeight:900,color:timerColor,
             textShadow:`0 0 12px ${timerColor}55`,animation:timerUrgent?"urgentPulse 0.5s ease-in-out infinite":"none",
-            minWidth:isMobile?36:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
+            minWidth:56,textAlign:"right"}}>{formatTime(timeLeft)}</div>
         ) : (
-          <div style={{fontFamily:"'Orbitron'",fontSize:isMobile?10:14,fontWeight:700,color:"rgba(60,80,110,0.6)",minWidth:isMobile?36:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,color:"rgba(60,80,110,0.6)",minWidth:56,textAlign:"right"}}>{formatTime(elapsed)}</div>
         )}
       </div>
+      )}
 
-      {/* Progress */}
-      {challenge.goal !== "none" && (
-        <div style={{width:totalWidth,maxWidth:"98vw",height:isMobile?2:3,background:"rgba(255,255,255,0.3)",borderRadius:2,marginBottom:isMobile?2:8}}>
+      {/* Progress — desktop only */}
+      {!isMobile && challenge.goal !== "none" && (
+        <div style={{width:totalWidth,maxWidth:"98vw",height:3,background:"rgba(255,255,255,0.3)",borderRadius:2,marginBottom:8}}>
           <div style={{height:"100%",borderRadius:2,transition:"width 0.35s ease-out",width:`${progress*100}%`,
             background:progress>0.85?"linear-gradient(90deg,#00a0c0,#00b040)":"#00a0c0",
             boxShadow:`0 0 8px ${progress>0.85?"#00b040":"#00a0c0"}44`}} />
@@ -1575,26 +1576,32 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
       {/* ==== MOBILE LAYOUT ==== */}
       {isMobile && (
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:"100%",paddingBottom:170}}>
-          {/* Score bar above board */}
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:"100%",paddingBottom:80}}>
+          {/* Compact top bar: menu + hold + score + timer + next */}
           <div style={{display:"flex",width:boardWidth+4,justifyContent:"space-between",alignItems:"center",
-            marginBottom:3,padding:"0 2px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
+            marginBottom:2,padding:"0 1px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={onMenu} style={{fontFamily:"'Orbitron'",fontSize:7,fontWeight:700,
+                padding:"2px 5px",border:"1px solid rgba(255,255,255,0.1)",borderRadius:4,
+                background:"rgba(255,255,255,0.04)",color:"rgba(180,200,230,0.5)",cursor:"pointer",
+                WebkitTapHighlightColor:"transparent"}}>☰</button>
               <div style={{flex:"0 0 auto"}}>{holdPanel}</div>
               {!isZen && (
-                <span style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
+                <span style={{fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
               )}
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
               {isZen ? (
-                <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:700,color:"#a0b8e0"}}>{lines} lines</span>
+                <span style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#a0b8e0"}}>{lines}ln</span>
               ) : (
                 <>
-                  <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:700,color:"#e0a040"}}>
-                    {target && challenge.goal === "lines" ? `${lines}/${target}` : `L${level}`}
-                  </span>
+                  {config.timeLimit > 0 ? (
+                    <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:900,color:timerColor}}>{formatTime(timeLeft)}</span>
+                  ) : (
+                    <span style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#e0a040"}}>L{level}</span>
+                  )}
                   {combo > 1 && (
-                    <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:900,color:"#e060a0"}}>{combo}x</span>
+                    <span style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:900,color:"#e060a0"}}>{combo}x</span>
                   )}
                 </>
               )}
@@ -1624,8 +1631,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       {/* Mobile controls fixed at bottom */}
       {isMobile && (
         <div style={{position:'fixed', bottom:0, left:0, right:0,
-          background:'linear-gradient(180deg, transparent 0%, rgba(10,14,26,0.85) 8px, rgba(10,14,26,0.98) 16px)',
-          zIndex:20, padding:'20px 12px calc(12px + env(safe-area-inset-bottom, 0px))'}}>
+          background:'linear-gradient(180deg, transparent 0%, rgba(10,14,26,0.9) 6px, rgba(10,14,26,0.98) 12px)',
+          zIndex:20, padding:'10px 10px calc(8px + env(safe-area-inset-bottom, 0px))'}}>
           <MobileTouchControls
             onMove={move} onRotate={rotatePiece} onDrop={drop}
             onHardDrop={hardDrop} onHold={holdPiece}
@@ -1681,23 +1688,15 @@ function MobileTouchControls({onMove, onRotate, onDrop, onHardDrop, onHold}) {
       style={style}>{label}</button>
   );
 
-  // Two-zone layout: LEFT side = movement, RIGHT side = actions
+  // Single compact row: ◀ ▼ ▶ | ↻ | DROP | HOLD
   return (
-    <div style={{display:'flex', gap:12, width:'100%', maxWidth:400, margin:'0 auto'}}>
-      {/* LEFT: D-pad movement */}
-      <div style={{flex:'1 1 50%', display:'flex', flexDirection:'column', gap:6}}>
-        <div style={{display:'flex', gap:6}}>
-          {hold("◀", () => onMove(-1), {...bStyle(false), flex:'1 1 0', height:52, fontSize:24})}
-          {hold("▼", onDrop, {...bStyle(false), flex:'1 1 0', height:52, fontSize:24})}
-          {hold("▶", () => onMove(1), {...bStyle(false), flex:'1 1 0', height:52, fontSize:24})}
-        </div>
-        {tap("⬇  HARD DROP", onHardDrop, {...bStyle(true), width:'100%', height:44, fontSize:12, letterSpacing:2})}
-      </div>
-      {/* RIGHT: Rotate + Hold */}
-      <div style={{flex:'1 1 50%', display:'flex', flexDirection:'column', gap:6}}>
-        {tap("↻  ROTATE", onRotate, {...bStyle(true), width:'100%', height:52, fontSize:13, letterSpacing:2})}
-        {tap("HOLD", onHold, {...bStyle(false), width:'100%', height:44, fontSize:12, letterSpacing:3})}
-      </div>
+    <div style={{display:'flex', gap:5, width:'100%', maxWidth:400, margin:'0 auto'}}>
+      {hold("◀", () => onMove(-1), {...bStyle(false), flex:'1 1 0', height:44, fontSize:20})}
+      {hold("▼", onDrop, {...bStyle(false), flex:'1 1 0', height:44, fontSize:20})}
+      {hold("▶", () => onMove(1), {...bStyle(false), flex:'1 1 0', height:44, fontSize:20})}
+      {tap("↻", onRotate, {...bStyle(true), flex:'1 1 0', height:44, fontSize:20})}
+      {tap("⬇", onHardDrop, {...bStyle(true), flex:'1 1 0', height:44, fontSize:18})}
+      {tap("⏸", onHold, {...bStyle(false), flex:'0.8 1 0', height:44, fontSize:16})}
     </div>
   );
 }
