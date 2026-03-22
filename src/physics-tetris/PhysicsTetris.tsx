@@ -240,7 +240,7 @@ export default function PhysicsTetris() {
     const chamberW = COLS * cellSize;
     const chamberH = ROWS * cellSize;
     const mobile = window.innerWidth < 700;
-    const wallThickness = 60; // thick walls prevent any tunneling
+    const wallThickness = 100; // very thick walls — impossible to tunnel
     const offsetX = Math.floor((window.innerWidth - chamberW) / 2);
     const offsetY = Math.floor((window.innerHeight - chamberH) / 2) + (mobile ? 30 : 20);
 
@@ -251,8 +251,8 @@ export default function PhysicsTetris() {
     const engine = Engine.create();
     engine.gravity.x = 0;
     engine.gravity.y = 0.8;
-    engine.positionIterations = 10;  // default 6 — more = less penetration
-    engine.velocityIterations = 8;   // default 4 — more = more stable
+    engine.positionIterations = 15;  // high = no penetration
+    engine.velocityIterations = 10;  // high = stable collisions
 
     // Walls (static) — very slippery so pieces don't stick
     const wallOpts = { isStatic: true, label: 'wall', friction: 0, frictionStatic: 0, restitution: 0.05 };
@@ -568,12 +568,29 @@ export default function PhysicsTetris() {
       }
 
       // Step physics — use small fixed steps to prevent tunneling
-      const maxStep = 16.67; // cap at ~60fps step
+      const maxStep = 16.67;
       let remaining = dt;
       while (remaining > 0) {
         const step = Math.min(remaining, maxStep);
         Engine.update(engine, step);
         remaining -= step;
+      }
+
+      // HARD BOUNDARY CLAMP — nothing goes through walls or floor
+      const allBodies = [activePiece, ...settledBodies].filter(Boolean);
+      for (const body of allBodies) {
+        if (!body || body.isStatic) continue;
+        const b = body.bounds;
+        let dx = 0, dy = 0;
+        if (b.min.x < offsetX) dx = offsetX - b.min.x;
+        if (b.max.x > offsetX + chamberW) dx = (offsetX + chamberW) - b.max.x;
+        if (b.max.y > offsetY + chamberH) dy = (offsetY + chamberH) - b.max.y;
+        if (dx !== 0 || dy !== 0) {
+          Body.setPosition(body, { x: body.position.x + dx, y: body.position.y + dy });
+          // Kill velocity in the clamped direction
+          if (dx !== 0) Body.setVelocity(body, { x: 0, y: body.velocity.y });
+          if (dy !== 0) Body.setVelocity(body, { x: body.velocity.x, y: 0 });
+        }
       }
 
       // Settling detection — only lock if piece is resting on floor or another piece
