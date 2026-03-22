@@ -46,24 +46,29 @@ export class PeerManager {
       try {
         return await new Promise((resolve, reject) => {
           const peerId = `tetris-${this.roomCode}`;
+          console.log('[PeerManager] Creating room with peer ID:', peerId);
           this.peer = new Peer(peerId);
 
           const timeout = setTimeout(() => {
+            console.warn('[PeerManager] Create room timed out');
             this.peer?.destroy();
-            reject(new Error('Connection to signaling server timed out'));
+            reject(new Error('Connection to signaling server timed out. Check your internet connection.'));
           }, 8000);
 
-          this.peer.on('open', () => {
+          this.peer.on('open', (id) => {
+            console.log('[PeerManager] Room created! Peer ID:', id);
             clearTimeout(timeout);
             resolve(this.roomCode);
           });
 
           this.peer.on('connection', (conn) => {
+            console.log('[PeerManager] Incoming connection from opponent!');
             this.conn = conn;
             this.setupConnection(alias);
           });
 
           this.peer.on('error', (err) => {
+            console.error('[PeerManager] Create room error:', err);
             clearTimeout(timeout);
             reject(err);
           });
@@ -79,36 +84,46 @@ export class PeerManager {
   }
 
   async joinRoom(code: string, alias: string): Promise<void> {
-    this.roomCode = code.toUpperCase();
+    this.roomCode = code.trim();
     this._isHost = false;
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
+        console.warn('[PeerManager] Join timed out for room', this.roomCode);
         this.peer?.destroy();
-        reject(new Error('Room not found or connection timed out'));
-      }, 10000);
+        reject(new Error('Room not found or connection timed out. Make sure the host is still waiting.'));
+      }, 12000);
 
       this.peer = new Peer();
 
-      this.peer.on('open', () => {
+      this.peer.on('open', (myId) => {
+        console.log('[PeerManager] Connected to signaling server as', myId);
         const peerId = `tetris-${this.roomCode}`;
+        console.log('[PeerManager] Connecting to peer', peerId);
         this.conn = this.peer!.connect(peerId, { reliable: true });
 
         this.conn.on('open', () => {
+          console.log('[PeerManager] Connection established!');
           clearTimeout(timeout);
           this.setupConnection(alias);
           resolve();
         });
 
         this.conn.on('error', (err: any) => {
+          console.error('[PeerManager] Connection error:', err);
           clearTimeout(timeout);
-          reject(err);
+          reject(new Error('Connection failed: ' + (err?.message || err?.type || String(err))));
         });
       });
 
       this.peer.on('error', (err) => {
+        console.error('[PeerManager] Peer error:', err);
         clearTimeout(timeout);
-        reject(err);
+        reject(new Error('Peer error: ' + (err?.message || err?.type || String(err))));
+      });
+
+      this.peer.on('disconnected', () => {
+        console.warn('[PeerManager] Disconnected from signaling server');
       });
     });
   }

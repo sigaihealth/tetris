@@ -297,6 +297,11 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
               <span style={{ animation: 'dotPulse 1.4s infinite 0.2s' }}>.</span>
               <span style={{ animation: 'dotPulse 1.4s infinite 0.4s' }}>.</span>
             </div>
+            <div style={{
+              fontFamily: "'Orbitron'", fontSize: 8, color: '#333', letterSpacing: 1, marginTop: 8,
+            }}>
+              {mode === 'creating' ? 'Connecting to server...' : 'Looking for room...'}
+            </div>
           </div>
         )}
 
