@@ -87,9 +87,17 @@ class App {
     this.multiplayerRoot.style.display = 'none';
     document.body.appendChild(this.multiplayerRoot);
 
-    // Renderer
-    this.sceneManager = new SceneManager(this.canvas);
-    this.effects = new Effects(this.sceneManager.scene);
+    // Renderer — may fail if WebGL is not available
+    try {
+      this.sceneManager = new SceneManager(this.canvas);
+      this.effects = new Effects(this.sceneManager.scene);
+    } catch (e) {
+      console.warn('WebGL not available, 3D mode disabled:', e);
+      // Create minimal stubs so the rest of the app works
+      this.sceneManager = null as any;
+      this.effects = null as any;
+      this.canvas.style.display = 'none';
+    }
 
     // Audio
     this.audioEngine = new AudioEngine();
