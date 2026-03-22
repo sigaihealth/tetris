@@ -7,7 +7,16 @@ import OpponentBoard from './OpponentBoard.js';
 /* ==================== CONSTANTS ==================== */
 const COLS = 10;
 const ROWS = 20;
-const getCellSize = () => Math.min(28, Math.floor((window.innerWidth - 20) / (COLS + 8)));
+const getCellSize = () => {
+  const mobile = window.innerWidth < 700;
+  if (mobile) {
+    const availH = window.innerHeight - 130; // scoreBar + controls + margins
+    const maxByHeight = Math.floor(availH / ROWS);
+    const maxByWidth = Math.floor((window.innerWidth - 16) / (COLS + 1));
+    return Math.max(14, Math.min(maxByHeight, maxByWidth));
+  }
+  return Math.min(28, Math.floor((window.innerWidth - 20) / (COLS + 8)));
+};
 const getIsMobile = () => window.innerWidth < 700;
 const DROP_SPEEDS = [800,720,630,550,470,380,300,220,140,100,80,60,50,40,30];
 const PREVIEW_COUNT = 3;
@@ -1036,17 +1045,19 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
         .touch-btn:active{opacity:0.7;transform:scale(0.93)}
       `}</style>
 
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8,
-        width:'100%',maxWidth:"98vw",justifyContent:"center",flexWrap:"wrap"}}>
-        <div style={{fontFamily:"'Orbitron'",fontSize:10,letterSpacing:3,color:"#667eea",
-          textShadow:'0 0 8px #667eea33'}}>
-          MULTIPLAYER
+      {/* Header — desktop only */}
+      {!isMobile && (
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8,
+          width:'100%',maxWidth:"98vw",justifyContent:"center",flexWrap:"wrap"}}>
+          <div style={{fontFamily:"'Orbitron'",fontSize:10,letterSpacing:3,color:"#667eea",
+            textShadow:'0 0 8px #667eea33'}}>
+            MULTIPLAYER
+          </div>
+          <div style={{fontFamily:"'Orbitron'",fontSize:9,color:"#333",letterSpacing:2}}>
+            vs {peerManager.opponentAlias}
+          </div>
         </div>
-        <div style={{fontFamily:"'Orbitron'",fontSize:9,color:"#333",letterSpacing:2}}>
-          vs {peerManager.opponentAlias}
-        </div>
-      </div>
+      )}
 
       {/* Main game area */}
       {!isMobile ? (
@@ -1081,57 +1092,54 @@ export default function MultiplayerGame({ peerManager, onBack }: MultiplayerGame
           </div>
         </div>
       ) : (
-        /* Mobile: board + opponent overlay in corner */
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:'100%',maxWidth:'98vw',position:'relative'}}>
+        <>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:'100%',paddingBottom:70}}>
+          {/* Top bar: menu + hold + score + vs opponent + next */}
+          <div style={{display:'flex',width:boardWidth+4,justifyContent:'space-between',alignItems:'center',
+            marginBottom:2,padding:'0 1px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:5}}>
+              <button onClick={onBack} style={{fontFamily:"'Orbitron'",fontSize:7,fontWeight:700,
+                padding:"2px 5px",border:"1px solid rgba(255,255,255,0.1)",borderRadius:4,
+                background:"rgba(255,255,255,0.04)",color:"rgba(180,200,230,0.5)",cursor:"pointer"}}>☰</button>
+              <div style={{flex:"0 0 auto"}}>{holdPanel}</div>
+              <span style={{fontFamily:"'Orbitron'",fontSize:12,fontWeight:700,color:"#60c0e0"}}>{score.toLocaleString()}</span>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:5}}>
+              <span style={{fontFamily:"'Orbitron'",fontSize:9,color:"#667eea"}}>vs {peerManager.opponentAlias.slice(0,8)}</span>
+              <div style={{flex:"0 0 auto"}}>{nextPanel}</div>
+            </div>
+          </div>
+
+          {/* Board */}
           {boardEl}
+        </div>
 
-          {/* Info panels below board */}
-          <div style={{display:'flex',gap:6,marginTop:6,width:boardWidth+4,justifyContent:'center',flexWrap:'wrap'}}>
-            <div style={{flex:'0 0 auto',minWidth:60}}>{holdPanel}</div>
-            <div style={{flex:'0 0 auto',minWidth:60}}>{nextPanel}</div>
-            <div style={{display:'flex',gap:4,flexWrap:'wrap',flex:'1 1 auto',minWidth:0}}>
-              <SidePanel title="SCORE">
-                <div style={{fontFamily:"'Orbitron'",fontSize:11,fontWeight:700,color:"#00f0f0",textAlign:"center"}}>{score.toLocaleString()}</div>
-              </SidePanel>
-              <SidePanel title="LNS">
-                <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#a0a0ff",textAlign:"center"}}>{lines}</div>
-              </SidePanel>
-              <SidePanel title="LVL">
-                <div style={{fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,color:"#f0a000",textAlign:"center"}}>{level}</div>
-              </SidePanel>
-            </div>
-          </div>
-
-          {/* Mobile touch controls */}
-          <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8,width:'100%',maxWidth:320,padding:'0 4px'}}>
-            <div style={{display:'flex',gap:6}}>
-              <MobileTouchBtn label={"\u25C0"} onClick={() => move(-1)} />
-              <MobileTouchBtn label={"\u25BC"} onClick={drop} />
-              <MobileTouchBtn label={"\u21BB"} onClick={rotatePiece} />
-              <MobileTouchBtn label={"\u25B6"} onClick={() => move(1)} />
-            </div>
-            <div style={{display:'flex',gap:6}}>
-              <MobileTouchBtn label="HOLD" onClick={holdPiece} />
-              <MobileTouchBtn label={"\u2B07 DROP"} onClick={hardDrop} wide />
-            </div>
-          </div>
-
-          {/* Opponent mini-board overlay on mobile */}
-          <div style={{
-            position:'fixed', top:'calc(8px + env(safe-area-inset-top, 0px))', right:8, zIndex:30,
-            background:'rgba(10,10,22,0.9)', border:'1px solid #1a1a2e', borderRadius:8,
-            padding:6,
-          }}>
-            <OpponentBoard
-              board={opBoard}
-              alias={peerManager.opponentAlias}
-              score={opScore}
-              lines={opLines}
-              level={opLevel}
-              compact
-            />
+        {/* Fixed controls at bottom */}
+        <div style={{position:'fixed',bottom:0,left:0,right:0,
+          background:'linear-gradient(180deg, transparent 0%, rgba(10,14,26,0.9) 6px, rgba(10,14,26,0.98) 12px)',
+          zIndex:20,padding:'10px 10px calc(8px + env(safe-area-inset-bottom, 0px))'}}>
+          <div style={{display:'flex',gap:5,width:'100%',maxWidth:400,margin:'0 auto'}}>
+            <MobileTouchBtn label="◀" onClick={() => move(-1)} />
+            <MobileTouchBtn label="▼" onClick={drop} />
+            <MobileTouchBtn label="▶" onClick={() => move(1)} />
+            <MobileTouchBtn label="↻" onClick={rotatePiece} />
+            <MobileTouchBtn label="⬇" onClick={hardDrop} />
+            <MobileTouchBtn label="⏸" onClick={holdPiece} />
           </div>
         </div>
+
+        {/* Opponent mini-board — small corner overlay */}
+        <div style={{
+          position:'fixed', top:'calc(8px + env(safe-area-inset-top, 0px))', right:4, zIndex:30,
+          background:'rgba(10,10,22,0.85)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:6,
+          padding:4, maxWidth:90,
+        }}>
+          <div style={{fontFamily:"'Orbitron'",fontSize:7,color:'#667eea',textAlign:'center',letterSpacing:1,marginBottom:2}}>
+            {peerManager.opponentAlias.slice(0,6)}
+          </div>
+          <OpponentBoard board={opBoard} alias="" score={opScore} lines={opLines} level={opLevel} compact />
+        </div>
+        </>
       )}
 
       {resultOverlay}
@@ -1145,14 +1153,13 @@ function MobileTouchBtn({label, onClick, wide}) {
       onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
       onMouseDown={(e) => { e.preventDefault(); onClick(); }}
       style={{
-        fontFamily:"'Orbitron'",fontSize:label.length>2?11:18,fontWeight:700,
-        flex:wide?"2 1 0":"1 1 0",height:52,minWidth:48,
-        border:"1px solid #2a2a3e",borderRadius:8,
-        background:"rgba(15,15,30,0.85)",color:"#8888aa",
+        fontFamily:"'Orbitron'",fontSize:label.length>2?10:18,fontWeight:700,
+        flex:"1 1 0",height:44,minWidth:44,
+        border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,
+        background:"rgba(255,255,255,0.04)",color:"rgba(180,200,230,0.6)",
         display:"flex",alignItems:"center",justifyContent:"center",
-        cursor:"pointer",letterSpacing:label.length>2?1:0,
+        cursor:"pointer",
         WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
-        transition:"opacity 0.1s, transform 0.1s",
       }}>{label}</button>
   );
 }
