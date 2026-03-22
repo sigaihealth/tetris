@@ -600,41 +600,35 @@ export default function PhysicsTetris() {
         }
       }
 
+      // Absolute wall enforcement function — used multiple times per frame
+      const enforceWalls = (body: any) => {
+        if (!body || body.isStatic) return;
+        const b = body.bounds;
+        if (b.min.x < offsetX) Body.setPosition(body, { x: body.position.x + (offsetX - b.min.x), y: body.position.y });
+        if (b.max.x > offsetX + chamberW) Body.setPosition(body, { x: body.position.x + (offsetX + chamberW - b.max.x), y: body.position.y });
+        if (b.max.y > offsetY + chamberH) Body.setPosition(body, { x: body.position.x, y: body.position.y + (offsetY + chamberH - b.max.y) });
+        // Kill any horizontal velocity — physics must not push sideways
+        Body.setVelocity(body, { x: 0, y: body.velocity.y });
+      };
+
+      // Enforce BEFORE physics
+      if (activePiece) enforceWalls(activePiece);
+
+      // Physics sub-steps with enforcement AFTER EACH step
       const maxStep = 16.67;
       let remaining = dt;
       while (remaining > 0) {
         const step = Math.min(remaining, maxStep);
         Engine.update(engine, step);
-        // Clamp INSIDE each sub-step too
-        if (activePiece) {
-          const ab = activePiece.bounds;
-          if (ab.min.x < offsetX) { Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX - ab.min.x + 2), y: activePiece.position.y }); Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y }); }
-          if (ab.max.x > offsetX + chamberW) { Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX + chamberW - ab.max.x - 2), y: activePiece.position.y }); Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y }); }
-          if (ab.max.y > offsetY + chamberH) { Body.setPosition(activePiece, { x: activePiece.position.x, y: activePiece.position.y + (offsetY + chamberH - ab.max.y) }); Body.setVelocity(activePiece, { x: activePiece.velocity.x, y: 0 }); }
-        }
+        // Enforce after every single sub-step
+        if (activePiece) enforceWalls(activePiece);
+        for (const sb of settledBodies) enforceWalls(sb);
         remaining -= step;
       }
 
-      // HARD BOUNDARY CLAMP — nothing goes through walls or floor
-      // Runs on active piece + any non-static settled piece (during line clear re-settle)
-      const clampBody = (body: any) => {
-        if (!body || body.isStatic) return;
-        const b = body.bounds;
-        if (b.min.x < offsetX) {
-          Body.setPosition(body, { x: body.position.x + (offsetX - b.min.x), y: body.position.y });
-          Body.setVelocity(body, { x: 0, y: body.velocity.y });
-        }
-        if (b.max.x > offsetX + chamberW) {
-          Body.setPosition(body, { x: body.position.x + (offsetX + chamberW - b.max.x), y: body.position.y });
-          Body.setVelocity(body, { x: 0, y: body.velocity.y });
-        }
-        if (b.max.y > offsetY + chamberH) {
-          Body.setPosition(body, { x: body.position.x, y: body.position.y + (offsetY + chamberH - b.max.y) });
-          Body.setVelocity(body, { x: body.velocity.x, y: 0 });
-        }
-      };
-      if (activePiece) clampBody(activePiece);
-      for (const b of settledBodies) clampBody(b);
+      // Final enforcement — absolute guarantee
+      if (activePiece) enforceWalls(activePiece);
+      for (const sb of settledBodies) enforceWalls(sb);
 
       // Settling detection — STRICT: only lock if piece is resting on floor or ON TOP of another piece
       if (activePiece) {
