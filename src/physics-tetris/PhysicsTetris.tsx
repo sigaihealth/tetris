@@ -362,9 +362,21 @@ export default function PhysicsTetris() {
       const wx0 = activePiece.position.x + lx0 * cos - ly0 * sin;
       const wy0 = activePiece.position.y + lx0 * sin + ly0 * cos;
 
-      // Snap cell[0] to nearest grid position
-      const snapCol = Math.round((wx0 - offsetX - cellSize / 2) / cellSize);
+      // Snap cell[0] to nearest grid position — clamped to valid columns
+      let snapCol = Math.round((wx0 - offsetX - cellSize / 2) / cellSize);
       const snapRow = Math.round((wy0 - offsetY - cellSize / 2) / cellSize);
+      // Clamp column so NO cell of the piece goes outside 0..COLS-1
+      // Find the leftmost and rightmost cell offsets after rotation
+      let minCellCol = Infinity, maxCellCol = -Infinity;
+      for (const [cx, cy] of cells) {
+        const lx = (cx - cenX) * cellSize, ly = (cy - cenY) * cellSize;
+        const worldRelX = lx * cos - ly * sin;
+        const cellCol = Math.round(worldRelX / cellSize);
+        minCellCol = Math.min(minCellCol, cellCol);
+        maxCellCol = Math.max(maxCellCol, cellCol);
+      }
+      snapCol = Math.max(-minCellCol, Math.min(COLS - 1 - maxCellCol, snapCol));
+
       const targetX0 = offsetX + snapCol * cellSize + cellSize / 2;
       const targetY0 = offsetY + snapRow * cellSize + cellSize / 2;
 
@@ -393,13 +405,18 @@ export default function PhysicsTetris() {
         pushAttempts++;
       }
 
-      // 4. Clamp: don't let piece extend outside walls
-      const newBounds = activePiece.bounds;
-      if (newBounds.min.x < offsetX) {
-        Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX - newBounds.min.x), y: activePiece.position.y });
-      }
-      if (newBounds.max.x > offsetX + chamberW) {
-        Body.setPosition(activePiece, { x: activePiece.position.x - (newBounds.max.x - offsetX - chamberW), y: activePiece.position.y });
+      // 4. Hard clamp: absolutely cannot extend outside walls
+      for (let clampPass = 0; clampPass < 3; clampPass++) {
+        const nb = activePiece.bounds;
+        let cdx = 0;
+        if (nb.min.x < offsetX) cdx = offsetX - nb.min.x + 1;
+        if (nb.max.x > offsetX + chamberW) cdx = (offsetX + chamberW) - nb.max.x - 1;
+        if (nb.max.y > offsetY + chamberH) {
+          Body.setPosition(activePiece, { x: activePiece.position.x, y: activePiece.position.y + (offsetY + chamberH - nb.max.y) });
+        }
+        if (cdx !== 0) {
+          Body.setPosition(activePiece, { x: activePiece.position.x + cdx, y: activePiece.position.y });
+        }
       }
 
       Body.setVelocity(activePiece, { x: 0, y: 0 });
