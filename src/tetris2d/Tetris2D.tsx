@@ -7,8 +7,8 @@ const getCellSize = () => {
   const mobile = window.innerWidth < 600;
   if (mobile) {
     // Calculate max cell size that fits vertically
-    // Need: header(28) + scoreBar(30) + board(ROWS*cell) + controls(140) + margins(16)
-    const availH = window.innerHeight - 214;
+    // Need: header(28) + scoreBar(30) + board(ROWS*cell) + controls(160) + margins(16)
+    const availH = window.innerHeight - 234;
     const maxByHeight = Math.floor(availH / ROWS);
     const maxByWidth = Math.floor((window.innerWidth - 20) / (COLS + 1));
     return Math.max(16, Math.min(maxByHeight, maxByWidth));
@@ -1575,7 +1575,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
       {/* ==== MOBILE LAYOUT ==== */}
       {isMobile && (
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:"100%",paddingBottom:150}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:"100%",paddingBottom:170}}>
           {/* Score bar above board */}
           <div style={{display:"flex",width:boardWidth+4,justifyContent:"space-between",alignItems:"center",
             marginBottom:3,padding:"0 2px"}}>
@@ -1624,8 +1624,8 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       {/* Mobile controls fixed at bottom */}
       {isMobile && (
         <div style={{position:'fixed', bottom:0, left:0, right:0,
-          background:'linear-gradient(180deg, rgba(10,14,26,0.0) 0%, rgba(10,14,26,0.95) 15%)',
-          zIndex:20, padding:'16px 12px calc(10px + env(safe-area-inset-bottom, 0px))'}}>
+          background:'linear-gradient(180deg, transparent 0%, rgba(10,14,26,0.85) 8px, rgba(10,14,26,0.98) 16px)',
+          zIndex:20, padding:'20px 12px calc(12px + env(safe-area-inset-bottom, 0px))'}}>
           <MobileTouchControls
             onMove={move} onRotate={rotatePiece} onDrop={drop}
             onHardDrop={hardDrop} onHold={holdPiece}
