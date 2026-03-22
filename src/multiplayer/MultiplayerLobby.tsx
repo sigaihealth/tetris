@@ -90,25 +90,27 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
       const code = await peerManager.createRoom(alias);
       setDisplayCode(code);
       setMode('waiting');
-    } catch (err) {
-      setError(`Failed to create room: ${err}`);
+    } catch (err: any) {
+      const msg = err?.message || err?.type || String(err);
+      setError(`Failed to create room: ${msg}`);
       setMode('choose');
     }
   }, [alias, peerManager]);
 
   const handleJoin = useCallback(async (codeOverride?: string) => {
-    const code = (codeOverride ?? roomCode).trim().toUpperCase();
-    if (!code || code.length < 4) {
+    const code = (codeOverride ?? roomCode).trim();
+    if (!code || code.length < 3) {
       setError('Enter a valid room code');
       return;
     }
     setError('');
     setMode('joining');
     try {
-      await peerManager.joinRoom(code.toUpperCase(), alias);
-      setDisplayCode(code.toUpperCase());
-    } catch (err) {
-      setError(`Failed to join room: ${err}`);
+      await peerManager.joinRoom(code, alias);
+      setDisplayCode(code);
+    } catch (err: any) {
+      const msg = err?.message || err?.type || String(err);
+      setError(`Could not join room: ${msg}`);
       setMode('choose');
     }
   }, [roomCode, alias, peerManager]);
@@ -254,10 +256,12 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
               <input
                 ref={joinInputRef}
                 className="mp-input"
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0, 6))}
-                placeholder="ROOM CODE"
+                onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="1234"
                 style={{
                   flex: 1, padding: '10px 14px', width: '100%',
                   background: 'rgba(20, 20, 40, 0.8)',
@@ -305,7 +309,7 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
               ROOM CODE
             </div>
             <div style={{
-              fontFamily: "'Orbitron'", fontSize: window.innerWidth < 500 ? 28 : 36, fontWeight: 900, letterSpacing: 8,
+              fontFamily: "'Orbitron'", fontSize: window.innerWidth < 500 ? 42 : 48, fontWeight: 900, letterSpacing: 12,
               color: '#667eea', marginBottom: 16,
               textShadow: '0 0 20px #667eea44',
             }}>

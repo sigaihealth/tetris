@@ -13,45 +13,26 @@ describe('PeerManager', () => {
   });
 
   describe('generateRoomCode', () => {
-    it('returns a 6-character string', () => {
+    it('returns a 4-digit numeric string', () => {
       const code = pm.generateRoomCode();
-      expect(code).toHaveLength(6);
+      expect(code).toHaveLength(4);
+      expect(code).toMatch(/^\d{4}$/);
     });
 
-    it('only contains valid characters (no ambiguous O/0/I/1)', () => {
-      const validChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    it('is between 1000 and 9999', () => {
       for (let i = 0; i < 100; i++) {
-        const code = pm.generateRoomCode();
-        for (const ch of code) {
-          expect(validChars).toContain(ch);
-        }
+        const num = Number(pm.generateRoomCode());
+        expect(num).toBeGreaterThanOrEqual(1000);
+        expect(num).toBeLessThanOrEqual(9999);
       }
     });
 
-    it('never contains O, 0, I, or 1', () => {
-      for (let i = 0; i < 200; i++) {
-        const code = pm.generateRoomCode();
-        expect(code).not.toContain('O');
-        expect(code).not.toContain('0');
-        expect(code).not.toContain('I');
-        expect(code).not.toContain('1');
-      }
-    });
-
-    it('different calls produce different codes (at least some variety in 100 calls)', () => {
+    it('different calls produce different codes (variety in 100 calls)', () => {
       const codes = new Set<string>();
       for (let i = 0; i < 100; i++) {
         codes.add(pm.generateRoomCode());
       }
-      // With 31^6 possible codes, 100 random codes should nearly all be unique
-      expect(codes.size).toBeGreaterThan(90);
-    });
-
-    it('all characters are uppercase letters or digits', () => {
-      for (let i = 0; i < 50; i++) {
-        const code = pm.generateRoomCode();
-        expect(code).toMatch(/^[A-Z0-9]{6}$/);
-      }
+      expect(codes.size).toBeGreaterThan(50);
     });
   });
 
@@ -148,7 +129,8 @@ describe('PeerManager', () => {
     it('can still generate codes after disconnect', () => {
       pm.disconnect();
       const code = pm.generateRoomCode();
-      expect(code).toHaveLength(6);
+      expect(code).toHaveLength(4);
+      expect(code).toMatch(/^\d{4}$/);
     });
   });
 

@@ -27,10 +27,8 @@ export class PeerManager {
   get opponentAlias() { return this._opponentAlias; }
 
   generateRoomCode(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-    return code;
+    // 4-digit numeric code (1000-9999) — easy to type on mobile
+    return String(1000 + Math.floor(Math.random() * 9000));
   }
 
   generateAlias(): string {
