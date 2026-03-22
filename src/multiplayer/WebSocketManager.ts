@@ -10,10 +10,11 @@ export type PeerMessage =
 // Public rooms that always exist on the server
 export const PUBLIC_ROOMS = ['1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999'];
 
-// Server URL — configure this after deploying the relay server
+// Server URL — update after deploying server/index.js
+// For now, fall back to running the relay locally
 const SERVER_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
   ? 'ws://localhost:8080'
-  : 'wss://tetris-relay.onrender.com'; // Update this after deploying
+  : (typeof window !== 'undefined' && (window as any).__TETRIS_RELAY_URL__) || 'wss://tetris-relay.onrender.com';
 
 export class WebSocketManager {
   private ws: WebSocket | null = null;
