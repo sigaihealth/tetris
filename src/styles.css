@@ -110,7 +110,12 @@ canvas {
 #menu-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(30, 35, 55, 0.85);
+  background: linear-gradient(135deg,
+    rgba(20, 25, 45, 0.95) 0%,
+    rgba(30, 35, 60, 0.95) 50%,
+    rgba(20, 25, 50, 0.95) 100%);
+  background-size: 400% 400%;
+  animation: menuGradient 15s ease infinite;
   backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
@@ -120,6 +125,12 @@ canvas {
   -webkit-overflow-scrolling: touch;
 }
 
+@keyframes menuGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .menu-container {
   text-align: center;
   max-width: 500px;
@@ -127,21 +138,29 @@ canvas {
 }
 
 .menu-title {
-  font-size: 64px;
   font-weight: bold;
-  letter-spacing: 12px;
-  margin-bottom: 40px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 0 30px rgba(102, 126, 234, 0.4));
+}
+
+.title-sig {
+  font-size: 72px;
+  letter-spacing: 16px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 30px rgba(102, 126, 234, 0.4));
+  line-height: 1.1;
 }
 
-.title-3d {
-  font-size: 40px;
-  vertical-align: super;
-  letter-spacing: 2px;
+.title-tetris {
+  font-size: 28px;
+  letter-spacing: 10px;
+  background: linear-gradient(135deg, #8b9cf7 0%, #a678c8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-top: 4px;
 }
 
 .menu-section {
@@ -180,9 +199,10 @@ canvas {
 
 .size-btn.selected {
   border-color: #667eea;
-  background: rgba(102, 126, 234, 0.2);
+  background: rgba(102, 126, 234, 0.25);
   color: #e0e0ff;
-  box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.35), inset 0 0 15px rgba(102, 126, 234, 0.1);
+  transform: scale(1.05);
 }
 
 .size-dim {
@@ -227,6 +247,11 @@ canvas {
 .menu-btn.primary:hover {
   background: rgba(102, 126, 234, 0.4);
   box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+@keyframes floatBlock {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
+  50% { transform: translateY(-20px) rotate(15deg); opacity: 1; }
 }
 
 .controls-ref {
@@ -298,12 +323,15 @@ canvas {
 
 @media (max-width: 600px) {
   .menu-title {
-    font-size: 32px !important;
-    letter-spacing: 4px !important;
-    margin-bottom: 24px !important;
+    margin-bottom: 12px !important;
   }
-  .title-3d {
-    font-size: 20px !important;
+  .title-sig {
+    font-size: 44px !important;
+    letter-spacing: 8px !important;
+  }
+  .title-tetris {
+    font-size: 18px !important;
+    letter-spacing: 6px !important;
   }
   .menu-container {
     padding: 16px 12px !important;

@@ -32,13 +32,6 @@ const CONTROLS_3D_DESKTOP: [string, string][] = [
   ['M', 'Mute'],
 ];
 
-const CONTROLS_3D_MOBILE: [string, string][] = [
-  ['Swipe L/R', 'Move piece'],
-  ['Swipe Down', 'Hard drop'],
-  ['Tap', 'Rotate'],
-  ['Q / E', 'Orbit camera'],
-];
-
 const CONTROLS_2D_DESKTOP: [string, string][] = [
   ['Arrows / WASD', 'Move piece'],
   ['Up / W', 'Rotate'],
@@ -47,15 +40,6 @@ const CONTROLS_2D_DESKTOP: [string, string][] = [
   ['C', 'Hold piece'],
   ['P / Esc', 'Pause'],
   ['M', 'Mute'],
-];
-
-const CONTROLS_2D_MOBILE: [string, string][] = [
-  ['Touch buttons', 'Move & rotate'],
-  ['DROP button', 'Hard drop'],
-  ['HOLD button', 'Hold piece'],
-  ['Swipe L/R', 'Move piece'],
-  ['Swipe Down', 'Hard drop'],
-  ['Tap', 'Rotate'],
 ];
 
 function el(tag: string, className?: string, text?: string): HTMLElement {
@@ -123,11 +107,30 @@ export class MenuScreen {
 
     // Title
     const title = el('div', 'menu-title');
-    const tetrisText = document.createTextNode('TETRIS');
-    title.appendChild(tetrisText);
-    const span3d = el('span', 'title-3d', '3D');
-    title.appendChild(span3d);
+    const sigText = el('div', 'title-sig', 'SIG');
+    title.appendChild(sigText);
+    const tetrisSubtitle = el('div', 'title-tetris', 'TETRIS');
+    title.appendChild(tetrisSubtitle);
     this.content.appendChild(title);
+
+    // Floating background blocks
+    for (let i = 0; i < 6; i++) {
+      const block = el('div');
+      block.style.cssText = `
+        position: absolute;
+        width: ${20 + i * 8}px;
+        height: ${20 + i * 8}px;
+        border-radius: 6px;
+        background: rgba(102, 126, 234, ${0.03 + i * 0.01});
+        border: 1px solid rgba(102, 126, 234, ${0.05 + i * 0.01});
+        left: ${10 + i * 15}%;
+        top: ${15 + (i * 13) % 70}%;
+        animation: floatBlock ${8 + i * 2}s ease-in-out infinite;
+        animation-delay: ${i * 1.5}s;
+        pointer-events: none;
+      `;
+      this.overlay.appendChild(block);
+    }
 
     // Game mode selector
     const modeSection = el('div', 'menu-section');
@@ -135,10 +138,10 @@ export class MenuScreen {
     const modeRow = el('div', 'size-selector');
     const modeBtns: HTMLElement[] = [];
 
-    const modes: { mode: GameMode; label: string }[] = [
-      { mode: '2d', label: '2D CLASSIC' },
-      { mode: '3d', label: '3D' },
-      { mode: 'physics', label: 'PHYSICS' },
+    const modes: { mode: GameMode; label: string; desc: string }[] = [
+      { mode: '2d', label: '2D CLASSIC', desc: 'Jelly blocks & challenges' },
+      { mode: '3d', label: '3D', desc: 'Glass blocks in 3D space' },
+      { mode: 'physics', label: 'PHYSICS', desc: 'Soft-body stacking' },
     ];
 
     // Well size selector (built ahead so we can show/hide)
@@ -169,24 +172,33 @@ export class MenuScreen {
     // Controls reference (dynamic based on mode and device)
     const ctrlSection = el('div', 'controls-ref');
     const isMobile = window.innerWidth < 600;
+    let controlsExpanded = false;
+    const ctrlToggle = btn('menu-btn', 'Show Controls', () => {
+      controlsExpanded = !controlsExpanded;
+      ctrlToggle.textContent = controlsExpanded ? 'Hide Controls' : 'Show Controls';
+      ctrlContent.style.display = controlsExpanded ? '' : 'none';
+    });
+    const ctrlContent = el('div');
+    ctrlContent.style.display = 'none';
+
     const buildControlsGrid = (): void => {
-      ctrlSection.replaceChildren();
-      if (window.innerWidth < 600) {
+      ctrlContent.replaceChildren();
+      if (isMobile) {
         ctrlSection.style.display = 'none';
         return;
       }
-      const deviceLabel = isMobile ? 'TOUCH' : 'KEYBOARD';
+      const deviceLabel = 'KEYBOARD';
       const modeLabel = this.selectedMode === '3d' ? '3D' : '2D';
-      ctrlSection.appendChild(el('div', 'menu-label', `CONTROLS \u2014 ${modeLabel} ${deviceLabel}`));
+      ctrlContent.appendChild(el('div', 'menu-label', `CONTROLS \u2014 ${modeLabel} ${deviceLabel}`));
       const controls = this.selectedMode === '3d'
-        ? (isMobile ? CONTROLS_3D_MOBILE : CONTROLS_3D_DESKTOP)
-        : (isMobile ? CONTROLS_2D_MOBILE : CONTROLS_2D_DESKTOP);
+        ? CONTROLS_3D_DESKTOP
+        : CONTROLS_2D_DESKTOP;
       const grid = el('div', 'controls-grid');
       for (const [key, action] of controls) {
         grid.appendChild(el('span', undefined, key));
         grid.appendChild(el('span', undefined, action));
       }
-      ctrlSection.appendChild(grid);
+      ctrlContent.appendChild(grid);
     };
 
     const updateSizeVisibility = (): void => {
@@ -194,9 +206,9 @@ export class MenuScreen {
       if (this.selectedMode !== 'physics') {
         buildControlsGrid();
       } else {
-        ctrlSection.replaceChildren();
-        const deviceLabel = isMobile ? 'TOUCH' : 'KEYBOARD';
-        ctrlSection.appendChild(el('div', 'menu-label', `CONTROLS \u2014 PHYSICS ${deviceLabel}`));
+        ctrlContent.replaceChildren();
+        const deviceLabel = 'KEYBOARD';
+        ctrlContent.appendChild(el('div', 'menu-label', `CONTROLS \u2014 PHYSICS ${deviceLabel}`));
         const grid = el('div', 'controls-grid');
         const physicsControls: [string, string][] = [
           ['Arrows / WASD', 'Push piece'],
@@ -209,13 +221,16 @@ export class MenuScreen {
           grid.appendChild(el('span', undefined, key));
           grid.appendChild(el('span', undefined, action));
         }
-        ctrlSection.appendChild(grid);
+        ctrlContent.appendChild(grid);
       }
     };
 
     for (const m of modes) {
       const mBtn = el('button', 'size-btn');
-      mBtn.textContent = m.label;
+      const mLabel = el('div', undefined, m.label);
+      const mDesc = el('div', 'size-dim', m.desc);
+      mBtn.appendChild(mLabel);
+      mBtn.appendChild(mDesc);
       if (m.mode === this.selectedMode) {
         mBtn.classList.add('selected');
       }
@@ -275,8 +290,12 @@ export class MenuScreen {
       this.content.appendChild(musicSection);
     }
 
-    // Append controls section (content managed by buildControlsGrid via updateSizeVisibility)
-    this.content.appendChild(ctrlSection);
+    // Append controls section (collapsible on desktop, hidden on mobile)
+    if (!isMobile) {
+      ctrlSection.appendChild(ctrlToggle);
+      ctrlSection.appendChild(ctrlContent);
+      this.content.appendChild(ctrlSection);
+    }
 
     // Enter key listener
     this.keyHandler = (e: KeyboardEvent) => {
