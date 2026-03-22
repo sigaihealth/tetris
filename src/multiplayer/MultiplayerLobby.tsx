@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PeerManager } from './PeerManager.js';
+import { WebSocketManager, PUBLIC_ROOMS } from './WebSocketManager.js';
 
 interface MultiplayerLobbyProps {
-  peerManager: PeerManager;
+  peerManager: WebSocketManager;
   initialRoomCode?: string;
   onGameStart: () => void;
   onBack: () => void;
@@ -229,6 +229,33 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
         {/* Choose mode */}
         {mode === 'choose' && (
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+            {/* Quick-join public rooms */}
+            <div style={{
+              fontFamily: "'Orbitron'", fontSize: 9, letterSpacing: 3, color: '#444', marginBottom: 10,
+            }}>
+              QUICK JOIN A ROOM
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20, justifyContent: 'center' }}>
+              {PUBLIC_ROOMS.map(code => (
+                <button key={code} className="mp-btn" onClick={() => handleJoin(code)} style={{
+                  padding: '10px 14px', minWidth: 62,
+                  fontFamily: "'Orbitron'", fontSize: 16, fontWeight: 900, letterSpacing: 2,
+                  border: '1.5px solid #667eea44', borderRadius: 8,
+                  background: '#667eea08', color: '#667eea', cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}>
+                  {code}
+                </button>
+              ))}
+            </div>
+
+            <div style={{
+              fontFamily: "'Orbitron'", fontSize: 9, letterSpacing: 3, color: '#333',
+              textAlign: 'center', marginBottom: 12,
+            }}>
+              OR CREATE PRIVATE ROOM
+            </div>
+
             <button className="mp-btn" onClick={handleCreate} style={{
               width: '100%', padding: window.innerWidth < 500 ? '16px' : '14px',
               fontFamily: "'Orbitron'", fontSize: 14, fontWeight: 700, letterSpacing: 3,
@@ -237,7 +264,7 @@ export default function MultiplayerLobby({ peerManager, initialRoomCode, onGameS
               transition: 'all 0.2s', marginBottom: 12,
               minHeight: window.innerWidth < 500 ? 54 : undefined,
             }}>
-              CREATE ROOM
+              CREATE PRIVATE ROOM
             </button>
 
             <div style={{

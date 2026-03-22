@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { PeerManager } from './PeerManager.js';
-import type { PeerMessage } from './PeerManager.js';
+import { WebSocketManager } from './WebSocketManager.js';
+import type { PeerMessage } from './WebSocketManager.js';
 import OpponentBoard from './OpponentBoard.js';
 
 /* ==================== CONSTANTS ==================== */
@@ -262,7 +262,7 @@ function ActionLabel({text, color, x, y, id}) {
 
 /* ==================== MULTIPLAYER GAME ==================== */
 interface MultiplayerGameProps {
-  peerManager: PeerManager;
+  peerManager: WebSocketManager;
   onBack: () => void;
 }
 

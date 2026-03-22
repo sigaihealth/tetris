@@ -8,7 +8,7 @@ import PhysicsTetris from './physics-tetris/PhysicsTetris.js';
 import MultiplayerLobby from './multiplayer/MultiplayerLobby.js';
 import MultiplayerGame from './multiplayer/MultiplayerGame.js';
 import { ErrorBoundary } from './multiplayer/ErrorBoundary.js';
-import { PeerManager } from './multiplayer/PeerManager.js';
+import { WebSocketManager } from './multiplayer/WebSocketManager.js';
 
 import { GameState, WELL_PRESETS } from './game/GameState.js';
 import type { GameEvent, Axis } from './game/GameState.js';
@@ -60,7 +60,7 @@ class App {
   // Multiplayer
   private multiplayerRoot: HTMLElement;
   private multiplayerReactRoot: Root | null = null;
-  private peerManager: PeerManager = new PeerManager();
+  private peerManager: WebSocketManager = new WebSocketManager();
 
   // Timing
   private lastTime = 0;
