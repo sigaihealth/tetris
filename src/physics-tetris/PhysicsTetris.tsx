@@ -539,12 +539,11 @@ export default function PhysicsTetris() {
 
         if (keys['ArrowLeft'] || keys['KeyA']) {
           Body.applyForce(activePiece, activePiece.position, { x: -forceMag, y: 0 });
-          // Cap horizontal velocity so it doesn't fly off
-          if (activePiece.velocity.x < -4) Body.setVelocity(activePiece, { x: -4, y: activePiece.velocity.y });
+          if (activePiece.velocity.x < -3) Body.setVelocity(activePiece, { x: -3, y: activePiece.velocity.y });
         }
         if (keys['ArrowRight'] || keys['KeyD']) {
           Body.applyForce(activePiece, activePiece.position, { x: forceMag, y: 0 });
-          if (activePiece.velocity.x > 4) Body.setVelocity(activePiece, { x: 4, y: activePiece.velocity.y });
+          if (activePiece.velocity.x > 3) Body.setVelocity(activePiece, { x: 3, y: activePiece.velocity.y });
         }
         if (keys['ArrowDown'] || keys['KeyS']) {
           Body.applyForce(activePiece, activePiece.position, { x: 0, y: forceMag * 3 });
@@ -581,15 +580,29 @@ export default function PhysicsTetris() {
       for (const body of allBodies) {
         if (!body || body.isStatic) continue;
         const b = body.bounds;
+        const margin = 2; // push 2px INWARD past the wall so piece isn't touching
         let dx = 0, dy = 0;
-        if (b.min.x < offsetX) dx = offsetX - b.min.x;
-        if (b.max.x > offsetX + chamberW) dx = (offsetX + chamberW) - b.max.x;
+        if (b.min.x < offsetX) dx = offsetX - b.min.x + margin;
+        if (b.max.x > offsetX + chamberW) dx = (offsetX + chamberW) - b.max.x - margin;
         if (b.max.y > offsetY + chamberH) dy = (offsetY + chamberH) - b.max.y;
         if (dx !== 0 || dy !== 0) {
           Body.setPosition(body, { x: body.position.x + dx, y: body.position.y + dy });
-          // Kill velocity in the clamped direction
-          if (dx !== 0) Body.setVelocity(body, { x: 0, y: body.velocity.y });
+          // Kill velocity toward the wall, keep gravity working
+          if (dx !== 0) {
+            Body.setVelocity(body, { x: 0, y: body.velocity.y });
+            // Apply downward force so piece doesn't float against wall
+            Body.applyForce(body, body.position, { x: 0, y: 0.01 * (body.mass || 1) });
+          }
           if (dy !== 0) Body.setVelocity(body, { x: body.velocity.x, y: 0 });
+        }
+      }
+
+      // Also cap horizontal velocity to prevent wall-piercing swipes
+      if (activePiece) {
+        const vx = activePiece.velocity.x;
+        const maxVx = 3;
+        if (Math.abs(vx) > maxVx) {
+          Body.setVelocity(activePiece, { x: Math.sign(vx) * maxVx, y: activePiece.velocity.y });
         }
       }
 
