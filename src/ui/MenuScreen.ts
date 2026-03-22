@@ -113,8 +113,9 @@ export class MenuScreen {
     title.appendChild(tetrisSubtitle);
     this.content.appendChild(title);
 
-    // Floating background blocks
-    for (let i = 0; i < 6; i++) {
+    // Floating background blocks — desktop only
+    const blockCount = window.innerWidth < 600 ? 0 : 6;
+    for (let i = 0; i < blockCount; i++) {
       const block = el('div');
       block.style.cssText = `
         position: absolute;
