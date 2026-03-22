@@ -40,26 +40,44 @@ export class PeerManager {
   }
 
   async createRoom(alias: string): Promise<string> {
-    this.roomCode = this.generateRoomCode();
     this._isHost = true;
 
-    return new Promise((resolve, reject) => {
-      const peerId = `tetris-${this.roomCode}`;
-      this.peer = new Peer(peerId);
+    // Try up to 3 room codes in case of collision
+    for (let attempt = 0; attempt < 3; attempt++) {
+      this.roomCode = this.generateRoomCode();
+      try {
+        return await new Promise((resolve, reject) => {
+          const peerId = `tetris-${this.roomCode}`;
+          this.peer = new Peer(peerId);
 
-      this.peer.on('open', () => {
-        resolve(this.roomCode);
-      });
+          const timeout = setTimeout(() => {
+            this.peer?.destroy();
+            reject(new Error('Connection to signaling server timed out'));
+          }, 8000);
 
-      this.peer.on('connection', (conn) => {
-        this.conn = conn;
-        this.setupConnection(alias);
-      });
+          this.peer.on('open', () => {
+            clearTimeout(timeout);
+            resolve(this.roomCode);
+          });
 
-      this.peer.on('error', (err) => {
-        reject(err);
-      });
-    });
+          this.peer.on('connection', (conn) => {
+            this.conn = conn;
+            this.setupConnection(alias);
+          });
+
+          this.peer.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          });
+        });
+      } catch (err: any) {
+        if (err?.type === 'unavailable-id' && attempt < 2) {
+          continue; // try another code
+        }
+        throw err;
+      }
+    }
+    throw new Error('Failed to create room after multiple attempts');
   }
 
   async joinRoom(code: string, alias: string): Promise<void> {
