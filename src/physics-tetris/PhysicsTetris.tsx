@@ -606,26 +606,27 @@ export default function PhysicsTetris() {
         }
       }
 
-      // Settling detection — only lock if piece is resting on floor or another piece
+      // Settling detection — STRICT: only lock if piece is resting on floor or ON TOP of another piece
       if (activePiece) {
         const vel = activePiece.velocity;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y) + Math.abs(activePiece.angularVelocity);
-        const isSlowEnough = speed < 0.5;
+        const isSlowEnough = speed < 0.3; // strict threshold
 
-        // Check if piece is supported — bottom must be near floor or near a settled body
         const pieceBottom = activePiece.bounds.max.y;
         const floorY = offsetY + chamberH;
-        const nearFloor = pieceBottom > floorY - cellSize * 0.5;
+        const nearFloor = pieceBottom > floorY - cellSize * 0.3;
 
+        // Check if piece is sitting ON TOP of a settled piece (settled piece's top is at our bottom)
         let nearSettled = false;
         if (!nearFloor) {
           for (const settled of settledBodies) {
-            // Is the settled piece directly below this one (vertically close, horizontally overlapping)?
             const sTop = settled.bounds.min.y;
-            const verticalGap = sTop - pieceBottom;
-            const hOverlap = activePiece.bounds.max.x > settled.bounds.min.x + 2 &&
-                             activePiece.bounds.min.x < settled.bounds.max.x - 2;
-            if (verticalGap < cellSize * 0.5 && verticalGap > -cellSize * 0.5 && hOverlap) {
+            const gap = sTop - pieceBottom; // positive = settled is below us (correct)
+            // Only count if settled piece is BELOW us (gap is small positive or tiny overlap)
+            // AND we overlap horizontally by at least a quarter cell
+            const hOverlap = Math.min(activePiece.bounds.max.x, settled.bounds.max.x) -
+                             Math.max(activePiece.bounds.min.x, settled.bounds.min.x);
+            if (gap > -cellSize * 0.2 && gap < cellSize * 0.3 && hOverlap > cellSize * 0.25) {
               nearSettled = true;
               break;
             }
@@ -636,26 +637,28 @@ export default function PhysicsTetris() {
 
         if (isSlowEnough && isSupported) {
           settleCounter++;
+        } else if (!isSupported) {
+          settleCounter = 0; // immediately reset if not supported
         } else {
-          settleCounter = Math.max(0, settleCounter - 2);
+          settleCounter = Math.max(0, settleCounter - 1);
         }
 
-        // If piece is stuck in air (not supported) and barely moving, unstick it
-        if (isSlowEnough && !isSupported && activePiece.position.y > offsetY) {
-          // Strong downward nudge
-          Body.applyForce(activePiece, activePiece.position, { x: 0, y: 0.02 * (activePiece.mass || 1) });
-          // If near a wall, push away from it
+        // If NOT supported, always force it down — no floating allowed
+        if (!isSupported && activePiece.position.y > offsetY) {
+          Body.applyForce(activePiece, activePiece.position, { x: 0, y: 0.03 * (activePiece.mass || 1) });
+          // Push away from walls
           const bMin = activePiece.bounds.min.x;
           const bMax = activePiece.bounds.max.x;
-          if (bMin < offsetX + cellSize * 0.5) {
-            Body.applyForce(activePiece, activePiece.position, { x: 0.01 * (activePiece.mass || 1), y: 0 });
-          } else if (bMax > offsetX + chamberW - cellSize * 0.5) {
-            Body.applyForce(activePiece, activePiece.position, { x: -0.01 * (activePiece.mass || 1), y: 0 });
+          if (bMin < offsetX + cellSize) {
+            Body.applyForce(activePiece, activePiece.position, { x: 0.015 * (activePiece.mass || 1), y: 0 });
+          }
+          if (bMax > offsetX + chamberW - cellSize) {
+            Body.applyForce(activePiece, activePiece.position, { x: -0.015 * (activePiece.mass || 1), y: 0 });
           }
           settleCounter = 0;
         }
 
-        if (settleCounter > 50) { // ~0.8 seconds of supported stillness
+        if (settleCounter > 60) { // ~1 second of supported stillness
           lockPiece();
           if (!gameOver) spawnPiece();
         }
