@@ -550,31 +550,38 @@ export default function PhysicsTetris() {
         return;
       }
 
-      // Move piece via direct velocity (not forces — forces can accumulate and pierce walls)
+      // Move piece via DIRECT POSITION — not velocity, not forces
+      // This makes wall penetration physically impossible
       if (activePiece) {
-        const moveSpeed = 2.5;
+        const moveStep = cellSize * 0.08; // pixels per frame
         const ab = activePiece.bounds;
         const leftEdge = offsetX;
         const rightEdge = offsetX + chamberW;
 
+        // Always zero horizontal velocity — we control position directly
+        Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y });
+
         if (keys['ArrowLeft'] || keys['KeyA']) {
-          if (ab.min.x > leftEdge + 2) { // only move if not at wall
-            Body.setVelocity(activePiece, { x: -moveSpeed, y: activePiece.velocity.y });
+          const newX = activePiece.position.x - moveStep;
+          const newMinX = ab.min.x - moveStep;
+          if (newMinX >= leftEdge) {
+            Body.setPosition(activePiece, { x: newX, y: activePiece.position.y });
           } else {
-            Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y });
+            // Clamp to wall
+            Body.setPosition(activePiece, { x: activePiece.position.x + (leftEdge - ab.min.x), y: activePiece.position.y });
           }
-        } else if (keys['ArrowRight'] || keys['KeyD']) {
-          if (ab.max.x < rightEdge - 2) { // only move if not at wall
-            Body.setVelocity(activePiece, { x: moveSpeed, y: activePiece.velocity.y });
+        }
+        if (keys['ArrowRight'] || keys['KeyD']) {
+          const newX = activePiece.position.x + moveStep;
+          const newMaxX = ab.max.x + moveStep;
+          if (newMaxX <= rightEdge) {
+            Body.setPosition(activePiece, { x: newX, y: activePiece.position.y });
           } else {
-            Body.setVelocity(activePiece, { x: 0, y: activePiece.velocity.y });
+            Body.setPosition(activePiece, { x: activePiece.position.x + (rightEdge - ab.max.x), y: activePiece.position.y });
           }
-        } else {
-          // No horizontal input — dampen horizontal velocity
-          Body.setVelocity(activePiece, { x: activePiece.velocity.x * 0.85, y: activePiece.velocity.y });
         }
         if (keys['ArrowDown'] || keys['KeyS']) {
-          Body.setVelocity(activePiece, { x: activePiece.velocity.x, y: Math.max(activePiece.velocity.y, 4) });
+          Body.setVelocity(activePiece, { x: 0, y: Math.max(activePiece.velocity.y, 4) });
         }
 
         // Angular damping — strongly resist spinning so pieces stay flat
@@ -585,21 +592,12 @@ export default function PhysicsTetris() {
         const angleDiff = snapAngle - activePiece.angle;
         Body.setAngularVelocity(activePiece, activePiece.angularVelocity + angleDiff * 0.06);
 
-        // Horizontal grid-snap guidance — gently nudge piece toward nearest column
-        // This makes pieces naturally align to the grid without feeling forced
+        // Grid-snap guidance via position (not force)
         const nearestGridX = Math.round((activePiece.position.x - offsetX) / cellSize) * cellSize + offsetX;
         const xDiff = nearestGridX - activePiece.position.x;
-        if (Math.abs(xDiff) > 1) {
-          Body.applyForce(activePiece, activePiece.position, { x: xDiff * 0.0003 * (activePiece.mass || 1), y: 0 });
+        if (Math.abs(xDiff) > 0.5 && !keys['ArrowLeft'] && !keys['KeyA'] && !keys['ArrowRight'] && !keys['KeyD']) {
+          Body.setPosition(activePiece, { x: activePiece.position.x + xDiff * 0.05, y: activePiece.position.y });
         }
-      }
-
-      // Step physics — use small fixed steps to prevent tunneling
-      // Clamp position BEFORE physics step too
-      if (activePiece) {
-        const ab = activePiece.bounds;
-        if (ab.min.x < offsetX) Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX - ab.min.x + 3), y: activePiece.position.y });
-        if (ab.max.x > offsetX + chamberW) Body.setPosition(activePiece, { x: activePiece.position.x + (offsetX + chamberW - ab.max.x - 3), y: activePiece.position.y });
       }
 
       const maxStep = 16.67;
@@ -618,34 +616,25 @@ export default function PhysicsTetris() {
       }
 
       // HARD BOUNDARY CLAMP — nothing goes through walls or floor
-      const allBodies = [activePiece, ...settledBodies].filter(Boolean);
-      for (const body of allBodies) {
-        if (!body || body.isStatic) continue;
+      // Runs on active piece + any non-static settled piece (during line clear re-settle)
+      const clampBody = (body: any) => {
+        if (!body || body.isStatic) return;
         const b = body.bounds;
-        const margin = 2; // push 2px INWARD past the wall so piece isn't touching
-        let dx = 0, dy = 0;
-        if (b.min.x < offsetX) dx = offsetX - b.min.x + margin;
-        if (b.max.x > offsetX + chamberW) dx = (offsetX + chamberW) - b.max.x - margin;
-        if (b.max.y > offsetY + chamberH) dy = (offsetY + chamberH) - b.max.y;
-        if (dx !== 0 || dy !== 0) {
-          Body.setPosition(body, { x: body.position.x + dx, y: body.position.y + dy });
-          // Kill velocity toward the wall, keep gravity working
-          if (dx !== 0) {
-            Body.setVelocity(body, { x: 0, y: body.velocity.y });
-            // Apply downward force so piece doesn't float against wall
-            Body.applyForce(body, body.position, { x: 0, y: 0.01 * (body.mass || 1) });
-          }
-          if (dy !== 0) Body.setVelocity(body, { x: body.velocity.x, y: 0 });
+        if (b.min.x < offsetX) {
+          Body.setPosition(body, { x: body.position.x + (offsetX - b.min.x), y: body.position.y });
+          Body.setVelocity(body, { x: 0, y: body.velocity.y });
         }
-      }
-
-      // Hard cap velocity — absolute max, no exceptions
-      if (activePiece) {
-        const vx = activePiece.velocity.x;
-        if (Math.abs(vx) > 2.5) {
-          Body.setVelocity(activePiece, { x: Math.sign(vx) * 2.5, y: activePiece.velocity.y });
+        if (b.max.x > offsetX + chamberW) {
+          Body.setPosition(body, { x: body.position.x + (offsetX + chamberW - b.max.x), y: body.position.y });
+          Body.setVelocity(body, { x: 0, y: body.velocity.y });
         }
-      }
+        if (b.max.y > offsetY + chamberH) {
+          Body.setPosition(body, { x: body.position.x, y: body.position.y + (offsetY + chamberH - b.max.y) });
+          Body.setVelocity(body, { x: body.velocity.x, y: 0 });
+        }
+      };
+      if (activePiece) clampBody(activePiece);
+      for (const b of settledBodies) clampBody(b);
 
       // Settling detection — STRICT: only lock if piece is resting on floor or ON TOP of another piece
       if (activePiece) {
