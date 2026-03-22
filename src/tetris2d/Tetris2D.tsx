@@ -1072,17 +1072,63 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); if (iv) clearInterval(iv); };
   }, [started, gameOver, paused, drop, challenge.id]);
 
-  // Touch
+  // Touch — modern mobile Tetris controls on the board itself
   const touchStart = useRef(null);
-  const onTouchStart = (e) => { touchStart.current = {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now()}; };
+  const touchMoved = useRef(false);
+  const touchDragCols = useRef(0);
+  const softDropTimer = useRef(null);
+  const moveRefTouch = useRef(move); moveRefTouch.current = move;
+  const hardDropRefTouch = useRef(hardDrop); hardDropRefTouch.current = hardDrop;
+  const rotateRefTouch = useRef(rotatePiece); rotateRefTouch.current = rotatePiece;
+  const holdRefTouch = useRef(holdPiece); holdRefTouch.current = holdPiece;
+  const dropRefTouch = useRef(drop); dropRefTouch.current = drop;
+
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    touchStart.current = {x:t.clientX, y:t.clientY, t:Date.now()};
+    touchMoved.current = false;
+    touchDragCols.current = 0;
+    // Start soft drop after 300ms of holding still
+    if (softDropTimer.current) clearInterval(softDropTimer.current);
+    softDropTimer.current = setTimeout(() => {
+      if (!touchMoved.current) {
+        softDropTimer.current = setInterval(() => dropRefTouch.current(), 50);
+      }
+    }, 300);
+  };
+  const onTouchMove = (e) => {
+    if (!touchStart.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStart.current.x;
+    const dy = t.clientY - touchStart.current.y;
+    // Horizontal drag: move piece by whole columns
+    const colsMoved = Math.round(dx / (CELL * 0.8));
+    const colsDelta = colsMoved - touchDragCols.current;
+    if (colsDelta !== 0) {
+      touchMoved.current = true;
+      if (softDropTimer.current) { clearTimeout(softDropTimer.current); clearInterval(softDropTimer.current); softDropTimer.current = null; }
+      for (let i = 0; i < Math.abs(colsDelta); i++) moveRefTouch.current(colsDelta > 0 ? 1 : -1);
+      touchDragCols.current = colsMoved;
+    }
+    // Vertical drag down: if dragged > 1.5 cells down, mark as drop gesture
+    if (dy > CELL * 1.5) touchMoved.current = true;
+  };
   const onTouchEnd = (e) => {
+    if (softDropTimer.current) { clearTimeout(softDropTimer.current); clearInterval(softDropTimer.current); softDropTimer.current = null; }
     if (!touchStart.current || !started || gameOver || paused) return;
     const dx = e.changedTouches[0].clientX - touchStart.current.x;
     const dy = e.changedTouches[0].clientY - touchStart.current.y;
     const dt = Date.now() - touchStart.current.t;
-    if (Math.abs(dx) < 15 && Math.abs(dy) < 15 && dt < 250) { rotatePiece(); return; }
-    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1);
-    else if (dy > 30) hardDrop();
+    if (!touchMoved.current && Math.abs(dx) < 12 && Math.abs(dy) < 12 && dt < 300) {
+      // Quick tap = rotate
+      rotateRefTouch.current();
+    } else if (dy > CELL * 2 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+      // Strong swipe down = hard drop
+      hardDropRefTouch.current();
+    } else if (dy < -CELL * 1.5 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+      // Swipe up = hold
+      holdRefTouch.current();
+    }
     touchStart.current = null;
   };
 
@@ -1426,7 +1472,7 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
       color:"#e0e0e0",userSelect:"none",overflow:"hidden",padding:isMobile?"6px 4px":"12px 8px",
       paddingBottom:isMobile?140:undefined,
       touchAction:"none",WebkitTouchCallout:"none"}}
-      onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
         @keyframes pulse{0%,100%{opacity:0.6}50%{opacity:1}}
@@ -1548,6 +1594,20 @@ function GameScreen({challenge, difficulty, config, onResult, onMenu}) {
 
           {/* Board */}
           {boardEl}
+        </div>
+      )}
+
+      {/* Mobile gesture hint — shows briefly on first game */}
+      {isMobile && started && !gameOver && elapsed < 4 && (
+        <div style={{position:'fixed', bottom:160, left:0, right:0, textAlign:'center',
+          zIndex:25, pointerEvents:'none', opacity: Math.max(0, 1 - elapsed/3),
+          transition:'opacity 0.5s'}}>
+          <div style={{display:'inline-block', background:'rgba(0,0,0,0.7)', borderRadius:12,
+            padding:'10px 20px', fontFamily:"'Orbitron'", fontSize:10, color:'rgba(200,220,255,0.8)',
+            letterSpacing:1, lineHeight:1.8}}>
+            TAP board = rotate &nbsp;·&nbsp; DRAG = move<br/>
+            SWIPE ↓ = drop &nbsp;·&nbsp; SWIPE ↑ = hold
+          </div>
         </div>
       )}
 
